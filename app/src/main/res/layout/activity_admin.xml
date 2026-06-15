@@ -1,0 +1,1931 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    tools:context=".AdminActivity">
+
+    <!-- ======================== 左侧导航栏 ======================== -->
+    <LinearLayout
+        android:id="@+id/sidebar"
+        android:layout_width="220dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/white"
+        android:paddingTop="32dp"
+        android:paddingBottom="24dp"
+        android:elevation="4dp">
+
+        <!-- 应用标题区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingHorizontal="24dp"
+            android:paddingBottom="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="微光小站"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/tsinghua_purple_dark"
+                android:gravity="center" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="管理后台"
+                android:textSize="12sp"
+                android:textColor="@color/darker_gray"
+                android:layout_marginTop="4dp" />
+
+        </LinearLayout>
+
+        <!-- 分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E8E8E8" />
+
+        <!-- 导航菜单 -->
+        <LinearLayout
+            android:id="@+id/menuContainer"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingTop="8dp">
+
+            <!-- 管理首页 -->
+            <LinearLayout
+                android:id="@+id/navDashboard"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="📊"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="管理首页"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 用户管理 -->
+            <LinearLayout
+                android:id="@+id/navUserManagement"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="👤"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="用户管理"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 活跃度排行 -->
+            <LinearLayout
+                android:id="@+id/navActivityRanking"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="🏆"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="活跃度排行"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 学习统计 -->
+            <LinearLayout
+                android:id="@+id/navLearningStats"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="📈"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="学习统计"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 课程掌握度 -->
+            <LinearLayout
+                android:id="@+id/navCourseMastery"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="🎯"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="课程掌握度"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 监控面板 -->
+            <LinearLayout
+                android:id="@+id/navMonitor"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="🛰️"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="监控面板"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 分类管理 -->
+            <LinearLayout
+                android:id="@+id/navCategoryManagement"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="🏷️"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="分类管理"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 数据重置 -->
+            <LinearLayout
+                android:id="@+id/navDataReset"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="⚠️"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="数据重置"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- 底部分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E8E8E8" />
+
+        <!-- 退出登录 -->
+        <LinearLayout
+            android:id="@+id/navLogout"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="20dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="🚪"
+                android:textSize="16sp"
+                android:gravity="center" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="退出登录"
+                android:textSize="15sp"
+                android:textColor="@color/tech_red_alert"
+                android:textStyle="bold"
+                android:layout_marginStart="14dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ======================== 主内容区 ======================== -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:background="@color/white">
+
+        <!-- 顶部栏 -->
+        <LinearLayout
+            android:id="@+id/headerBar"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="20dp"
+            android:background="@color/tech_blue_primary"
+            android:elevation="2dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="微光小站"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/white" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- 用户头像 -->
+            <FrameLayout
+                android:id="@+id/headerAvatarFrame"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="10dp">
+
+                <TextView
+                    android:id="@+id/headerUserAvatarText"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:text="管"
+                    android:textSize="16sp"
+                    android:textColor="@color/white"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:background="@drawable/circle_avatar"
+                    android:backgroundTint="@color/tech_blue_accent"
+                    android:visibility="visible" />
+
+                <ImageView
+                    android:id="@+id/headerUserAvatarImage"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+            </FrameLayout>
+
+            <!-- 用户名 -->
+            <TextView
+                android:id="@+id/headerUsername"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="管理员"
+                android:textSize="14sp"
+                android:textColor="@color/white" />
+
+        </LinearLayout>
+
+        <!-- 内容区（各面板切换） -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- ===== 面板0：仪表盘 ===== -->
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/panelDashboard"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="20dp"
+                android:fillViewport="true"
+                android:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- 欢迎区域 -->
+                    <TextView
+                        android:id="@+id/dashboardWelcomeTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="欢迎回来，管理员！"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="以下是系统运行数据概览"
+                        android:textSize="14sp"
+                        android:textColor="@color/darker_gray"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp" />
+
+                    <!-- 统计卡片行1 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="2"
+                        android:layout_marginBottom="12dp">
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/totalUsersCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="4dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="👥"
+                                    android:textSize="28sp" />
+
+                                <TextView
+                                    android:id="@+id/statTotalUsers"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="--"
+                                    android:textSize="36sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/white"
+                                    android:layout_marginTop="12dp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="总用户数"
+                                    android:textSize="13sp"
+                                    android:textColor="@color/tech_blue_accent"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/onlineUsersCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="6dp"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="4dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="🟢"
+                                    android:textSize="28sp" />
+
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal"
+                                    android:gravity="bottom"
+                                    android:layout_marginTop="12dp">
+
+                                    <TextView
+                                        android:id="@+id/statOnlineUsers"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="--"
+                                        android:textSize="36sp"
+                                        android:textStyle="bold"
+                                        android:textColor="@color/white" />
+
+                                    <TextView
+                                        android:id="@+id/statOnlineRate"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text=""
+                                        android:textSize="14sp"
+                                        android:textColor="@color/tech_green_data"
+                                        android:layout_marginStart="6dp"
+                                        android:layout_marginBottom="6dp" />
+
+                                </LinearLayout>
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="在线用户"
+                                    android:textSize="13sp"
+                                    android:textColor="@color/tech_blue_accent"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                    </LinearLayout>
+
+                    <!-- 统计卡片行2 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="2"
+                        android:layout_marginBottom="12dp">
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/totalCoursesCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="4dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="📚"
+                                    android:textSize="28sp" />
+
+                                <TextView
+                                    android:id="@+id/statTotalCourses"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="--"
+                                    android:textSize="36sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/white"
+                                    android:layout_marginTop="12dp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="课程总数"
+                                    android:textSize="13sp"
+                                    android:textColor="@color/tech_blue_accent"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/completionRateCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="6dp"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="4dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="✅"
+                                    android:textSize="28sp" />
+
+                                <TextView
+                                    android:id="@+id/statAverageCompletion"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="--"
+                                    android:textSize="36sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/white"
+                                    android:layout_marginTop="12dp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="平均完成率"
+                                    android:textSize="13sp"
+                                    android:textColor="@color/tech_blue_accent"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                    </LinearLayout>
+
+                    <!-- 统计卡片行3 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="2"
+                        android:layout_marginBottom="24dp">
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/totalWatchTimeCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="4dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="⏱️"
+                                    android:textSize="28sp" />
+
+                                <TextView
+                                    android:id="@+id/statTotalWatchTime"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="--"
+                                    android:textSize="36sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/white"
+                                    android:layout_marginTop="12dp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="总学习时长"
+                                    android:textSize="13sp"
+                                    android:textColor="@color/tech_blue_accent"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/activeUsersCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="6dp"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="4dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="🔥"
+                                    android:textSize="28sp" />
+
+                                <TextView
+                                    android:id="@+id/statActiveUsers"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="--"
+                                    android:textSize="36sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/white"
+                                    android:layout_marginTop="12dp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="活跃用户数"
+                                    android:textSize="13sp"
+                                    android:textColor="@color/tech_blue_accent"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                    </LinearLayout>
+
+                    <!-- 快捷管理区域 -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="快捷管理"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- 快捷入口 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="2"
+                        android:layout_marginBottom="12dp">
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/quickOnlineUsers"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:padding="16dp">
+
+                                <TextView
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:text="👥"
+                                    android:textSize="20sp"
+                                    android:gravity="center" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginStart="10dp">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="实时在线人数"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:textColor="@color/tech_blue_light" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="查看当前在线用户"
+                                        android:textSize="11sp"
+                                        android:textColor="@color/tech_blue_accent" />
+
+                                </LinearLayout>
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="→"
+                                    android:textSize="18sp"
+                                    android:textColor="@color/tech_blue_accent" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/quickActivityRanking"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="6dp"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:padding="16dp">
+
+                                <TextView
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:text="🏆"
+                                    android:textSize="20sp" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginStart="10dp">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="活跃度排行"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:textColor="@color/tech_blue_light" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="用户活跃度排名"
+                                        android:textSize="11sp"
+                                        android:textColor="@color/tech_blue_accent" />
+
+                                </LinearLayout>
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="→"
+                                    android:textSize="18sp"
+                                    android:textColor="@color/tech_blue_accent" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="2"
+                        android:layout_marginBottom="12dp">
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/quickLearningStats"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:padding="16dp">
+
+                                <TextView
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:text="📊"
+                                    android:textSize="20sp" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginStart="10dp">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="学习情况统计"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:textColor="@color/tech_blue_light" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="学生学习进度分析"
+                                        android:textSize="11sp"
+                                        android:textColor="@color/tech_blue_accent" />
+
+                                </LinearLayout>
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="→"
+                                    android:textSize="18sp"
+                                    android:textColor="@color/tech_blue_accent" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/quickCourseMastery"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="6dp"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:padding="16dp">
+
+                                <TextView
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:text="🎯"
+                                    android:textSize="20sp" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginStart="10dp">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="课程掌握度"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:textColor="@color/tech_blue_light" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="课程完成情况分析"
+                                        android:textSize="11sp"
+                                        android:textColor="@color/tech_blue_accent" />
+
+                                </LinearLayout>
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="→"
+                                    android:textSize="18sp"
+                                    android:textColor="@color/tech_blue_accent" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="2"
+                        android:layout_marginBottom="24dp">
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/quickUserManagement"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:padding="16dp">
+
+                                <TextView
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:text="👤"
+                                    android:textSize="20sp" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginStart="10dp">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="用户管理"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:textColor="@color/tech_blue_light" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="查看和管理用户"
+                                        android:textSize="11sp"
+                                        android:textColor="@color/tech_blue_accent" />
+
+                                </LinearLayout>
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="→"
+                                    android:textSize="18sp"
+                                    android:textColor="@color/tech_blue_accent" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/quickDataReset"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="6dp"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:cardBackgroundColor="@color/tech_blue_primary"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:padding="16dp">
+
+                                <TextView
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:text="⚠️"
+                                    android:textSize="20sp" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginStart="10dp">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="数据重置"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:textColor="@color/tech_blue_light" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="清除数据恢复初始"
+                                        android:textSize="11sp"
+                                        android:textColor="@color/tech_blue_accent" />
+
+                                </LinearLayout>
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="→"
+                                    android:textSize="18sp"
+                                    android:textColor="@color/tech_blue_accent" />
+
+                            </LinearLayout>
+
+                        </androidx.cardview.widget.CardView>
+
+                    </LinearLayout>
+
+                    <!-- 底部间距 -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp" />
+
+                </LinearLayout>
+
+            </androidx.core.widget.NestedScrollView>
+
+            <!-- ===== 面板1：用户管理 ===== -->
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/panelUserManagement"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="👤  用户管理"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="16dp"
+                        android:weightSum="3">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/adminStatTotalUsers"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tsinghua_purple" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="总用户"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/adminStatTeachers"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tech_cyan_info" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="教师"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/adminStatStudents"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tech_green_data" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="学生"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <!-- 搜索框 -->
+                    <EditText
+                        android:id="@+id/userSearchEditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:background="@drawable/edit_text_background"
+                        android:hint="搜索用户名..."
+                        android:paddingHorizontal="16dp"
+                        android:textSize="14sp"
+                        android:textColor="@color/darker_gray"
+                        android:textColorHint="#B0B0B0"
+                        android:drawableStart="@android:drawable/ic_menu_search"
+                        android:drawablePadding="8dp"
+                        android:inputType="text"
+                        android:singleLine="true"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- 角色筛选标签 -->
+                    <LinearLayout
+                        android:id="@+id/userRoleFilterContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:id="@+id/filterAll"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="全部"
+                            android:textSize="13sp"
+                            android:textColor="#FFFFFF"
+                            android:gravity="center"
+                            android:paddingHorizontal="16dp"
+                            android:background="@drawable/filter_tab_active"
+                            android:layout_marginEnd="8dp"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/filterAdmin"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="管理员"
+                            android:textSize="13sp"
+                            android:textColor="@color/darker_gray"
+                            android:gravity="center"
+                            android:paddingHorizontal="16dp"
+                            android:background="@drawable/filter_tab_inactive"
+                            android:layout_marginEnd="8dp"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/filterTeacher"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="教师"
+                            android:textSize="13sp"
+                            android:textColor="@color/darker_gray"
+                            android:gravity="center"
+                            android:paddingHorizontal="16dp"
+                            android:background="@drawable/filter_tab_inactive"
+                            android:layout_marginEnd="8dp"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/filterStudent"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="学生"
+                            android:textSize="13sp"
+                            android:textColor="@color/darker_gray"
+                            android:gravity="center"
+                            android:paddingHorizontal="16dp"
+                            android:background="@drawable/filter_tab_inactive"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="用户列表"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark"
+                        android:layout_marginBottom="8dp" />
+
+                    <LinearLayout
+                        android:id="@+id/userListContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+            </androidx.core.widget.NestedScrollView>
+
+            <!-- ===== 面板2：活跃度排行 ===== -->
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/panelActivityRanking"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🏆  活跃度排行"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="16dp"
+                        android:weightSum="3">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/rankTotalUsers"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tsinghua_purple" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="参与用户"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/rankAverageScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tech_cyan_info" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="平均分"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/rankMaxScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tech_green_data" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="最高分"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="排行榜"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark"
+                        android:layout_marginBottom="8dp" />
+
+                    <LinearLayout
+                        android:id="@+id/rankingListContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+            </androidx.core.widget.NestedScrollView>
+
+            <!-- ===== 面板3：学习统计 ===== -->
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/panelLearningStats"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📊  学习情况统计"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="16dp"
+                        android:weightSum="3">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/learnTotalStudents"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tsinghua_purple" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="学习人数"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/learnAvgProgress"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tech_cyan_info" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="平均进度"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/learnCompletedCourses"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tech_green_data" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="完成课程"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="学生列表"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark"
+                        android:layout_marginBottom="8dp" />
+
+                    <LinearLayout
+                        android:id="@+id/studentListContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+            </androidx.core.widget.NestedScrollView>
+
+            <!-- ===== 面板4：课程掌握度 ===== -->
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/panelCourseMastery"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🎯  课程掌握度"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="16dp"
+                        android:weightSum="3">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/masteryTotalCourses"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tsinghua_purple" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="课程数"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/masteryAvgProgress"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tech_cyan_info" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="平均进度"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:id="@+id/masteryCompletionRate"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tech_green_data" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="完成率"
+                                android:textSize="12sp"
+                                android:textColor="@color/darker_gray" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="课程列表"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark"
+                        android:layout_marginBottom="8dp" />
+
+                    <LinearLayout
+                        android:id="@+id/courseListContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+            </androidx.core.widget.NestedScrollView>
+
+            <!-- ===== 面板5：分类管理 ===== -->
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/panelCategoryManagement"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🏷️ 分类管理"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_blue_dark"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="管理课程分类，添加、编辑和删除分类"
+                        android:textSize="14sp"
+                        android:textColor="@color/darker_gray"
+                        android:layout_marginBottom="20dp" />
+
+                    <!-- 分类统计 -->
+                    <LinearLayout
+                        android:id="@+id/categoryStatsLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="2"
+                        android:layout_marginBottom="20dp" />
+
+                    <!-- 添加分类输入行 -->
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="2dp"
+                        android:layout_marginBottom="16dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="16dp"
+                            android:gravity="center_vertical">
+
+                            <EditText
+                                android:id="@+id/categoryNameInput"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_weight="1"
+                                android:hint="输入新分类名称"
+                                android:textSize="14sp"
+                                android:background="@drawable/edit_text_background"
+                                android:padding="12dp"
+                                android:layout_marginEnd="12dp"
+                                android:maxLines="1" />
+
+                            <Button
+                                android:id="@+id/btnAddCategory"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:text="添加"
+                                android:textSize="14sp"
+                                android:background="@drawable/ic_button_background"
+                                android:textColor="@color/white"
+                                android:paddingHorizontal="24dp" />
+
+                        </LinearLayout>
+
+                    </androidx.cardview.widget.CardView>
+
+                    <!-- 分类列表 -->
+                    <LinearLayout
+                        android:id="@+id/categoryListContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+            </androidx.core.widget.NestedScrollView>
+
+            <!-- ===== 面板6：数据重置 ===== -->
+            <LinearLayout
+                android:id="@+id/panelDataReset"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="40dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚠️"
+                    android:textSize="64sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="数据重置"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tech_red_alert"
+                    android:layout_marginTop="16dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="此操作将清除所有本地数据，恢复到初始状态。"
+                    android:textSize="14sp"
+                    android:textColor="@color/darker_gray"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="32dp"
+                    android:gravity="center" />
+
+                <Button
+                    android:id="@+id/btnDataReset"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="确认重置所有数据"
+                    android:backgroundTint="@color/tech_red_alert"
+                    android:textColor="@color/white"
+                    android:paddingHorizontal="32dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="（此操作不可撤销）"
+                    android:textSize="12sp"
+                    android:textColor="@color/darker_gray"
+                    android:alpha="0.6"
+                    android:layout_marginTop="8dp" />
+
+            </LinearLayout>
+
+            <!-- ===== 面板7：监控面板 ===== -->
+            <FrameLayout
+                android:id="@+id/panelMonitor"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+
+        </FrameLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

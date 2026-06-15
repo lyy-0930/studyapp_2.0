@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="12dp"
+    android:background="@drawable/edit_text_background"
+    android:layout_marginBottom="8dp">
+
+    <!-- 课程图标 -->
+    <TextView
+        android:id="@+id/recordIcon"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:text="📖"
+        android:textSize="18sp"
+        android:gravity="center" />
+
+    <!-- 课程名称 -->
+    <TextView
+        android:id="@+id/recordCourseName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="课程名称"
+        android:textSize="15sp"
+        android:textColor="@color/tsinghua_purple_dark"
+        android:textStyle="bold"
+        android:layout_marginStart="12dp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <!-- 学习时长 -->
+    <TextView
+        android:id="@+id/recordMinutes"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0分钟"
+        android:textSize="14sp"
+        android:textColor="@color/tsinghua_purple"
+        android:textStyle="bold"
+        android:layout_marginEnd="12dp" />
+
+    <!-- 删除按钮 -->
+    <ImageButton
+        android:id="@+id/recordDeleteBtn"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/ic_delete"
+        android:background="@null"
+        android:contentDescription="删除记录"
+        android:scaleType="centerInside"
+        android:padding="4dp" />
+
+</LinearLayout>

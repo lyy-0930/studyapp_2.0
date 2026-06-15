@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- 四层科技蓝渐变：从深到浅，创造立体层次感 -->
+    <gradient
+        android:startColor="@color/tech_blue_dark"
+        android:centerColor="@color/tech_blue_primary"
+        android:endColor="@color/tech_blue_secondary"
+        android:angle="135"
+        android:type="linear"
+        android:centerX="0.3"
+        android:centerY="0.3" />
+
+    <!-- 可选：添加轻微径向渐变效果增强立体感 -->
+    <gradient
+        android:startColor="#30000000"
+        android:endColor="#10FFFFFF"
+        android:type="radial"
+        android:gradientRadius="80%"
+        android:centerX="0.8"
+        android:centerY="0.2" />
+
+    <!-- 可选：添加轻微圆角 -->
+    <corners android:radius="0dp" />
+
+</shape>

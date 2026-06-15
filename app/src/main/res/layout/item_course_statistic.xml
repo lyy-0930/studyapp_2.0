@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="16dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="6dp"
+    app:cardBackgroundColor="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- 课程名称和上传日期 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- 课程图标 -->
+            <TextView
+                android:id="@+id/courseIconTextView"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="📚"
+                android:textSize="24sp"
+                android:gravity="center" />
+
+            <!-- 课程信息 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
+
+                <!-- 课程名称 -->
+                <TextView
+                    android:id="@+id/courseNameTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="课程名称"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
+
+                <!-- 上传日期 -->
+                <TextView
+                    android:id="@+id/uploadDateTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="上传日期"
+                    android:textSize="12sp"
+                    android:textColor="@color/darker_gray"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+            <!-- 选课学生数（突出显示） -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/edit_text_background"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:id="@+id/enrolledStudentsTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tech_green_data" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="学生"
+                    android:textSize="12sp"
+                    android:textColor="@color/darker_gray" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- 统计指标分隔线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/light_gray"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- 统计指标网格（使用LinearLayout模拟） -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- 第一行：平均观看时长和点击率 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <!-- 平均观看时长 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:padding="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="⏱️ 平均观看"
+                        android:textSize="12sp"
+                        android:textColor="@color/darker_gray" />
+
+                    <TextView
+                        android:id="@+id/averageDurationTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0分钟"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_orange_warning"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <!-- 点击率 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:padding="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="👆 点击率"
+                        android:textSize="12sp"
+                        android:textColor="@color/darker_gray" />
+
+                    <TextView
+                        android:id="@+id/clickRateTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0%"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_red_alert"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- 第二行：总观看次数和完成率 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <!-- 总观看次数 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:padding="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="👀 观看次数"
+                        android:textSize="12sp"
+                        android:textColor="@color/darker_gray" />
+
+                    <TextView
+                        android:id="@+id/totalViewsTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0次"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_cyan_info"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <!-- 完成率 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:padding="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="✅ 完成率"
+                        android:textSize="12sp"
+                        android:textColor="@color/darker_gray" />
+
+                    <TextView
+                        android:id="@+id/completionRateTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0%"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_green_data"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- 总观看时长（底部显示） -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="12dp"
+            android:paddingTop="12dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:background="@drawable/edit_text_background">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📈 总观看时长："
+                android:textSize="14sp"
+                android:textColor="@color/darker_gray" />
+
+            <TextView
+                android:id="@+id/totalWatchTimeTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0分钟"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/tsinghua_purple_dark" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- 简化的统计摘要 -->
+            <TextView
+                android:id="@+id/summaryTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="查看详情"
+                android:textSize="12sp"
+                android:textColor="@color/tsinghua_purple"
+                android:paddingVertical="4dp"
+                android:paddingHorizontal="8dp"
+                android:background="@drawable/ic_button_background_selector"
+                android:gravity="center" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

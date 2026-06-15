@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="darker_gray">#FF444444</color>
+    <color name="holo_blue_dark">#FF1976D2</color>
+    <!-- 清华紫颜色 -->
+    <color name="tsinghua_purple">#FF7D2181</color>
+    <color name="tsinghua_purple_light">#FF9B59B6</color>
+    <color name="tsinghua_purple_dark">#FF5B2C6F</color>
+    <color name="tsinghua_purple_gradient_start">#FF7D2181</color>
+    <color name="tsinghua_purple_gradient_end">#FF9B59B6</color>
+
+    <!-- 科技风颜色（管理员界面使用） -->
+    <color name="tech_blue_dark">#FF0D1B2A</color> <!-- 深科技蓝，接近黑色 -->
+    <color name="tech_blue_primary">#FF1B263B</color> <!-- 主科技蓝 -->
+    <color name="tech_blue_secondary">#FF415A77</color> <!-- 次科技蓝 -->
+    <color name="tech_blue_accent">#FF778DA9</color> <!-- 强调色蓝灰 -->
+    <color name="tech_blue_light">#FFE0E1DD</color> <!-- 浅蓝灰 -->
+    <color name="tech_green_data">#FF4CAF50</color> <!-- 数据绿色 -->
+    <color name="tech_cyan_info">#FF00BCD4</color> <!-- 信息青色 -->
+    <color name="tech_orange_warning">#FFFF9800</color> <!-- 警告橙色 -->
+    <color name="tech_red_alert">#FFF44336</color> <!-- 警报红色 -->
+
+    <!-- 灰色调 -->
+    <color name="light_gray">#FFCCCCCC</color> <!-- 浅灰色 -->
+    <color name="light_gray_background">#FFF5F5F5</color> <!-- 极浅灰色背景 -->
+</resources>

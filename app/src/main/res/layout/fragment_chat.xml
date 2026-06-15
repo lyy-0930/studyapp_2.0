@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5">
+
+    <!-- ========== 会话列表 ========== -->
+    <LinearLayout
+        android:id="@+id/conversationListView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="我的消息"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/tsinghua_purple_dark"
+            android:padding="16dp"
+            android:paddingBottom="8dp" />
+
+        <LinearLayout
+            android:id="@+id/emptyConversations"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="暂无消息"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#999999" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="选课后自动创建与教师的会话"
+                android:textSize="13sp"
+                android:textColor="#CCCCCC"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="20dp" />
+
+            <Button
+                android:id="@+id/refreshConversationsBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="⟳ 刷新"
+                android:textSize="13sp"
+                android:textColor="@color/tsinghua_purple"
+                android:background="@drawable/edit_text_background"
+                android:backgroundTint="#F0F0F0"
+                android:paddingHorizontal="20dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/conversationsRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- ========== 聊天详情 ========== -->
+    <LinearLayout
+        android:id="@+id/chatDetailView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- 聊天头部 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/white"
+            android:elevation="2dp"
+            android:paddingHorizontal="8dp">
+
+            <TextView
+                android:id="@+id/chatBackBtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="‹"
+                android:textSize="28sp"
+                android:textColor="@color/tsinghua_purple_dark"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/chatOtherName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/tsinghua_purple_dark"
+                android:gravity="center"
+                android:layout_marginEnd="40dp" />
+
+        </LinearLayout>
+
+        <!-- 消息列表 -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/messagesRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:padding="8dp"
+            android:clipToPadding="false" />
+
+        <!-- 消息输入栏 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@color/white"
+            android:elevation="4dp"
+            android:padding="8dp">
+
+            <EditText
+                android:id="@+id/messageInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="输入消息..."
+                android:inputType="text|textCapSentences"
+                android:maxLines="3"
+                android:background="@drawable/edit_text_background"
+                android:padding="10dp"
+                android:textSize="14sp"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/sendMessageBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="发送"
+                android:textSize="14sp"
+                android:backgroundTint="@color/tsinghua_purple"
+                android:textColor="@color/white"
+                android:paddingHorizontal="16dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,53 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "student001",
+      "password": "123456",
+      "role": "student",
+      "createdAt": "2026-04-18T17:53:58.888Z"
+    },
+    {
+      "id": 2,
+      "username": "teacher001",
+      "password": "123456",
+      "role": "teacher",
+      "createdAt": "2026-04-18T17:53:58.888Z"
+    },
+    {
+      "id": 3,
+      "username": "admin001",
+      "password": "123456",
+      "role": "admin",
+      "createdAt": "2026-04-18T17:53:58.888Z"
+    },
+    {
+      "id": 4,
+      "username": "linyuyang",
+      "password": "123456",
+      "role": "student",
+      "createdAt": "2026-04-18T18:10:04.210Z"
+    },
+    {
+      "id": 5,
+      "username": "teacher",
+      "password": "123456",
+      "role": "student",
+      "createdAt": "2026-04-19T05:18:20.262Z"
+    },
+    {
+      "id": 6,
+      "username": "te",
+      "password": "123456",
+      "role": "teacher",
+      "createdAt": "2026-04-19T05:19:13.907Z"
+    },
+    {
+      "id": 7,
+      "username": "teacher123",
+      "password": "123456",
+      "role": "teacher",
+      "createdAt": "2026-04-19T07:06:22.306Z"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- 三层渐变：从左上到右下，创造层次感 -->
+    <gradient
+        android:startColor="@color/tsinghua_purple_dark"
+        android:centerColor="@color/tsinghua_purple"
+        android:endColor="@color/tsinghua_purple_light"
+        android:angle="135"
+        android:type="linear"
+        android:centerX="0.3"
+        android:centerY="0.3" />
+
+    <!-- 可选：添加轻微圆角 -->
+    <corners android:radius="0dp" />
+
+</shape>

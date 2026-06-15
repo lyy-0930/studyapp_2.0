@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="6dp"
+    app:cardBackgroundColor="@color/tech_blue_primary">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="20dp"
+        android:gravity="center_vertical">
+
+        <!-- 课程图标 -->
+        <LinearLayout
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/course_icon_background"
+            android:padding="8dp">
+
+            <TextView
+                android:id="@+id/courseIconTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📚"
+                android:textSize="24sp" />
+
+            <!-- 掌握度指示器 -->
+            <View
+                android:id="@+id/masteryIndicator"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="@drawable/circle_mastery"
+                android:layout_marginTop="4dp" />
+
+        </LinearLayout>
+
+        <!-- 课程信息 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
+
+            <!-- 课程名称 -->
+            <TextView
+                android:id="@+id/courseNameTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="课程名称"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/tech_blue_light"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <!-- 学习指标 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp">
+
+                <!-- 掌握度 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="🎯 掌握度"
+                        android:textSize="12sp"
+                        android:textColor="@color/tech_blue_accent" />
+
+                    <TextView
+                        android:id="@+id/masteryLevelTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0%"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_orange_warning" />
+
+                </LinearLayout>
+
+                <!-- 正确率 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="✅ 正确率"
+                        android:textSize="12sp"
+                        android:textColor="@color/tech_blue_accent" />
+
+                    <TextView
+                        android:id="@+id/accuracyTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0%"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_green_data" />
+
+                </LinearLayout>
+
+                <!-- 完成率 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="📊 完成率"
+                        android:textSize="12sp"
+                        android:textColor="@color/tech_blue_accent" />
+
+                    <TextView
+                        android:id="@+id/completionRateTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0%"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_cyan_info" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- 学习学生数 -->
+            <TextView
+                android:id="@+id/studentCountTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="学习学生：0人"
+                android:textSize="12sp"
+                android:textColor="@color/tech_blue_accent"
+                android:layout_marginTop="8dp" />
+
+        </LinearLayout>
+
+        <!-- 掌握度等级标签 -->
+        <TextView
+            android:id="@+id/masteryLevelTag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="精通"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/mastery_level_background"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6px"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

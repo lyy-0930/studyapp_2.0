@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/* ─── HUD Theme ─── */
+@theme inline {
+  --color-hud-bg: #0A0E27;
+  --color-hud-surface: #0F172A;
+  --color-hud-surface-light: #1E293B;
+  --color-hud-cyan: #00D4FF;
+  --color-hud-cyan-accent: #00D4FF;
+  --color-hud-blue: #0080FF;
+  --color-hud-green: #10B981;
+  --color-hud-gold: #F59E0B;
+  --color-hud-purple: #7C3AED;
+  --color-hud-red: #EF4444;
+  --color-hud-text-primary: #F8FAFC;
+  --color-hud-text-secondary: #94A3B8;
+  --color-hud-text-muted: #64748B;
+  --color-hud-glass: rgba(255, 255, 255, 0.04);
+  --color-hud-glass-light: rgba(255, 255, 255, 0.08);
+  --color-hud-border: rgba(0, 212, 255, 0.12);
+  --color-hud-glow: rgba(0, 212, 255, 0.12);
+  --color-trend-up: #10B981;
+  --color-trend-down: #EF4444;
+  --font-sans: 'Fira Sans', system-ui, sans-serif;
+  --font-mono: 'Fira Code', monospace;
+}
+
+/* ─── Base ─── */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  background: #0A0E27;
+  color: #F8FAFC;
+  font-family: 'Fira Sans', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+/* ─── Scanlines ─── */
+.scanlines {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.015) 2px,
+    rgba(255, 255, 255, 0.015) 4px
+  );
+}
+
+/* ─── Glow Effect ─── */
+.glow-text {
+  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+}
+.glow-border {
+  box-shadow: 0 0 10px var(--color-hud-glow), inset 0 0 10px var(--color-hud-glow);
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0, 255, 255, 0.2); border-radius: 2px; }
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+

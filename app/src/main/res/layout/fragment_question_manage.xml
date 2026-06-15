@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5">
+
+    <!-- 顶部标题栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/white"
+        android:paddingHorizontal="16dp"
+        android:elevation="2dp">
+
+        <TextView
+            android:id="@+id/questionManageBackBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="← 返回"
+            android:textSize="15sp"
+            android:textColor="@color/tsinghua_purple"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/questionManageTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="题目管理"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="@color/tsinghua_purple_dark"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+    <!-- 操作栏：AI生成 + 手动添加 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/aiGenerateBtn"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:text="🤖 AI生成题目"
+            android:textSize="14sp"
+            android:textColor="@color/white"
+            android:gravity="center"
+            android:background="@drawable/gradient_tsinghua_purple"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/manualAddBtn"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:text="✏️ 手动添加"
+            android:textSize="14sp"
+            android:textColor="@color/white"
+            android:gravity="center"
+            android:background="@drawable/gradient_tech_blue_layered"
+            android:clickable="true"
+            android:focusable="true" />
+
+    </LinearLayout>
+
+    <!-- 状态筛选 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/filterAllBtn"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="全部"
+            android:textSize="13sp"
+            android:textColor="@color/white"
+            android:gravity="center"
+            android:background="@drawable/gradient_tsinghua_purple"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:id="@+id/filterDraftBtn"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="草稿"
+            android:textSize="13sp"
+            android:textColor="@color/tsinghua_purple_dark"
+            android:gravity="center"
+            android:background="#E8E8E8"
+            android:layout_marginHorizontal="4dp" />
+
+        <TextView
+            android:id="@+id/filterPublishedBtn"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="已发布"
+            android:textSize="13sp"
+            android:textColor="@color/tsinghua_purple_dark"
+            android:gravity="center"
+            android:background="#E8E8E8"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
+
+    <!-- 加载状态 -->
+    <TextView
+        android:id="@+id/questionLoadingText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="正在加载题目..."
+        android:textSize="14sp"
+        android:textColor="@color/darker_gray"
+        android:gravity="center"
+        android:padding="24dp"
+        android:visibility="gone" />
+
+    <!-- 空状态 -->
+    <TextView
+        android:id="@+id/questionEmptyText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="暂无题目，点击上方按钮生成或手动添加"
+        android:textSize="14sp"
+        android:textColor="@color/darker_gray"
+        android:gravity="center"
+        android:padding="24dp"
+        android:visibility="gone" />
+
+    <!-- 题目列表 -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="12dp"
+        android:paddingTop="0dp">
+
+        <LinearLayout
+            android:id="@+id/questionListContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </androidx.core.widget.NestedScrollView>
+
+</LinearLayout>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp"
+    android:background="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="@color/white">
+
+        <!-- 视频标题区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <!-- 视频图标 -->
+            <TextView
+                android:id="@+id/videoIconTextView"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:text="🎬"
+                android:textSize="20sp"
+                android:gravity="center" />
+
+            <!-- 视频标题 -->
+            <TextView
+                android:id="@+id/videoTitleTextView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="视频标题"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/tsinghua_purple_dark"
+                android:paddingStart="12dp" />
+
+        </LinearLayout>
+
+        <!-- 视频信息区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp"
+            android:paddingStart="44dp">
+
+            <!-- 上传时间 -->
+            <TextView
+                android:id="@+id/videoTimeTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="上传时间：2024-01-01 12:00"
+                android:textSize="14sp"
+                android:textColor="@color/darker_gray"
+                android:layout_marginBottom="4dp" />
+
+            <!-- 视频URL（简短显示） -->
+            <TextView
+                android:id="@+id/videoUrlTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="地址：https://example.com/video.mp4"
+                android:textSize="14sp"
+                android:textColor="@color/darker_gray"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+        </LinearLayout>
+
+        <!-- 底部提示 -->
+        <TextView
+            android:id="@+id/clickHintTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="点击查看详情"
+            android:textSize="12sp"
+            android:textColor="@color/tsinghua_purple"
+            android:textStyle="italic"
+            android:gravity="end"
+            android:paddingTop="4dp" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

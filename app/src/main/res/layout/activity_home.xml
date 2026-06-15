@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/gradient_tsinghua_purple"
+    android:padding="24dp"
+    tools:context=".HomeActivity">
+
+    <!-- 主欢迎卡片 -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/welcomeCard"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="16dp"
+        app:cardBackgroundColor="@color/white"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintVertical_bias="0.4">
+
+        <!-- 卡片内容 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="48dp"
+            android:gravity="center">
+
+            <!-- 欢迎图标 -->
+            <TextView
+                android:id="@+id/iconTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎓"
+                android:textSize="64sp"
+                android:layout_marginBottom="24dp" />
+
+            <!-- 欢迎标题 -->
+            <TextView
+                android:id="@+id/welcomeTitleTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="欢迎来到即刻学习"
+                android:textSize="32sp"
+                android:textStyle="bold"
+                android:textColor="@color/tsinghua_purple_dark"
+                android:gravity="center" />
+
+            <!-- 欢迎副标题 -->
+            <TextView
+                android:id="@+id/welcomeSubtitleTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="开启你的学习之旅"
+                android:textSize="18sp"
+                android:textColor="@color/darker_gray"
+                android:layout_marginTop="16dp"
+                android:gravity="center" />
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+    <!-- 功能按钮区域 -->
+    <LinearLayout
+        android:id="@+id/buttonContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="48dp"
+        android:gravity="center"
+        android:paddingHorizontal="32dp"
+        app:layout_constraintTop_toBottomOf="@id/welcomeCard"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- 上传按钮 -->
+        <Button
+            android:id="@+id/uploadButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="上传"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:backgroundTint="@color/tsinghua_purple"
+            android:textColor="@color/white"
+            android:paddingVertical="16dp"
+            android:layout_marginEnd="12dp"
+            android:drawablePadding="8dp"
+            android:drawableTop="@drawable/ic_upload" />
+
+        <!-- 我的按钮 -->
+        <Button
+            android:id="@+id/profileButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="我的"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:backgroundTint="@color/tsinghua_purple_light"
+            android:textColor="@color/white"
+            android:paddingVertical="16dp"
+            android:layout_marginStart="12dp"
+            android:drawablePadding="8dp"
+            android:drawableTop="@drawable/ic_profile" />
+
+    </LinearLayout>
+
+    <!-- 底部提示 -->
+    <TextView
+        android:id="@+id/hintTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="提示：点击卡片查看更多功能"
+        android:textSize="14sp"
+        android:textColor="@color/white"
+        android:alpha="0.8"
+        app:layout_constraintTop_toBottomOf="@id/buttonContainer"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="48dp"
+        android:layout_marginBottom="32dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where choco *)",
+      "Bash(curl -s http://localhost:3001/users)",
+      "Bash(net session *)",
+      "Bash(cp \"C:\\\\Users\\\\iuuuu\\\\AppData\\\\Local\\\\Temp\\\\LibreOffice_26.2.2_Win_x86-64.msi\" \"C:\\\\Users\\\\iuuuu\\\\LibreOffice_install.msi\")",
+      "Bash(msiexec /i \"C:\\\\Users\\\\iuuuu\\\\LibreOffice_install.msi\" /quiet /norestart)",
+      "Bash(echo \"exit: $?\")"
+    ]
+  }
+}

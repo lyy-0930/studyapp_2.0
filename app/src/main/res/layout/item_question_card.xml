@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="1dp"
+    app:cardBackgroundColor="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <!-- 题目标题 + 状态标签 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/questionNumber"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="第 1 题"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/tsinghua_purple_dark" />
+
+            <TextView
+                android:id="@+id/questionStatusBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="20dp"
+                android:layout_marginStart="8dp"
+                android:text="草稿"
+                android:textSize="11sp"
+                android:textColor="@color/white"
+                android:gravity="center"
+                android:paddingHorizontal="8dp"
+                android:background="@drawable/gradient_tsinghua_purple" />
+
+            <TextView
+                android:id="@+id/questionSourceLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="20dp"
+                android:layout_marginStart="4dp"
+                android:text="AI"
+                android:textSize="10sp"
+                android:textColor="@color/darker_gray"
+                android:gravity="center"
+                android:paddingHorizontal="6dp"
+                android:background="#F0F0F0" />
+
+        </LinearLayout>
+
+        <!-- 题目内容 -->
+        <TextView
+            android:id="@+id/questionText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="题目内容"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:layout_marginTop="8dp"
+            android:lineSpacingExtra="3dp" />
+
+        <!-- 选项 -->
+        <TextView
+            android:id="@+id/questionOptions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="A. xxx\nB. xxx\nC. xxx\nD. xxx"
+            android:textSize="13sp"
+            android:textColor="#555555"
+            android:layout_marginTop="6dp"
+            android:lineSpacingExtra="2dp" />
+
+        <!-- 正确答案 -->
+        <TextView
+            android:id="@+id/questionCorrectAnswer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="正确答案：A"
+            android:textSize="12sp"
+            android:textColor="@color/tech_green_data"
+            android:layout_marginTop="6dp" />
+
+        <!-- 操作按钮 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:id="@+id/questionPublishBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:text="发布"
+                android:textSize="12sp"
+                android:textColor="@color/tech_green_data"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:background="#E8F5E9"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/questionEditBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:layout_marginStart="6dp"
+                android:text="编辑"
+                android:textSize="12sp"
+                android:textColor="@color/tech_cyan_info"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:background="#E0F7FA"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/questionDeleteBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:layout_marginStart="6dp"
+                android:text="删除"
+                android:textSize="12sp"
+                android:textColor="@color/tech_red_alert"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:background="#FFEBEE"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

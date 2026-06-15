@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="oval">
+            <solid android:color="@color/tech_blue_accent" /> <!-- 按压状态：浅蓝灰 -->
+            <size android:width="48dp" android:height="48dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/tech_blue_secondary" /> <!-- 正常状态：次科技蓝 -->
+            <size android:width="48dp" android:height="48dp" />
+        </shape>
+    </item>
+</selector>

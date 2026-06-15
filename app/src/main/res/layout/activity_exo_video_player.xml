@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/tech_blue_dark"
+    tools:context=".ExoVideoPlayerActivity">
+
+    <!-- 标题栏 -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/tech_blue_dark"
+        android:minHeight="?attr/actionBarSize"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:navigationIcon="@drawable/ic_back"
+        app:title="视频播放"
+        app:titleTextColor="@color/white" />
+
+    <!-- 视频播放区域（MediaPlayer + SurfaceView） -->
+    <FrameLayout
+        android:id="@+id/videoContainer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/black"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <SurfaceView
+            android:id="@+id/surfaceView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- 自定义媒体控制器 -->
+        <LinearLayout
+            android:id="@+id/mediaController"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_gravity="bottom"
+            android:background="#99000000"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            android:paddingHorizontal="8dp">
+
+            <ImageButton
+                android:id="@+id/playPauseButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@android:drawable/ic_media_pause"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="播放/暂停" />
+
+            <TextView
+                android:id="@+id/currentTimeText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00:00"
+                android:textColor="@color/white"
+                android:textSize="12sp" />
+
+            <SeekBar
+                android:id="@+id/progressSeekBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="1000"
+                android:progress="0" />
+
+            <TextView
+                android:id="@+id/totalTimeText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00:00"
+                android:textColor="@color/white"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- 加载提示 -->
+    <TextView
+        android:id="@+id/loadingTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="视频加载中..."
+        android:textSize="16sp"
+        android:textColor="@color/white"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/videoContainer"
+        app:layout_constraintBottom_toBottomOf="@id/videoContainer"
+        app:layout_constraintStart_toStartOf="@id/videoContainer"
+        app:layout_constraintEnd_toEndOf="@id/videoContainer" />
+
+    <!-- 错误提示 -->
+    <TextView
+        android:id="@+id/errorTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="视频加载失败"
+        android:textSize="16sp"
+        android:textColor="@color/tech_red_alert"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/videoContainer"
+        app:layout_constraintBottom_toBottomOf="@id/videoContainer"
+        app:layout_constraintStart_toStartOf="@id/videoContainer"
+        app:layout_constraintEnd_toEndOf="@id/videoContainer" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

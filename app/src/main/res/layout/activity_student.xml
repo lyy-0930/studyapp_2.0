@@ -1,0 +1,1330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    tools:context=".StudentActivity">
+
+    <!-- ======================== 左侧导航栏 ======================== -->
+    <LinearLayout
+        android:id="@+id/sidebar"
+        android:layout_width="220dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/white"
+        android:paddingTop="48dp"
+        android:paddingBottom="24dp"
+        android:elevation="2dp">
+
+        <!-- 用户头像和名称区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="24dp"
+            android:layout_marginBottom="24dp">
+
+            <!-- 用户头像（支持自定义图片） -->
+            <FrameLayout
+                android:id="@+id/avatarFrame"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:id="@+id/userAvatarText"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:text="学"
+                    android:textSize="28sp"
+                    android:textColor="@color/white"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:background="@drawable/circle_avatar"
+                    android:backgroundTint="@color/tsinghua_purple"
+                    android:visibility="visible" />
+
+                <ImageView
+                    android:id="@+id/userAvatarImage"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+            </FrameLayout>
+
+            <!-- 用户名 -->
+            <TextView
+                android:id="@+id/sidebarUsername"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="加载中..."
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/tsinghua_purple_dark" />
+
+            <!-- 角色标签 -->
+            <TextView
+                android:id="@+id/sidebarRole"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="学生"
+                android:textSize="12sp"
+                android:textColor="@color/tsinghua_purple"
+                android:layout_marginTop="4dp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="2dp" />
+
+        </LinearLayout>
+
+        <!-- 分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E8E8E8" />
+
+        <!-- 导航菜单 -->
+        <LinearLayout
+            android:id="@+id/menuContainer"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingTop="8dp">
+
+            <!-- 首页 -->
+            <LinearLayout
+                android:id="@+id/navHome"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/navHomeIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="🏠"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/navHomeText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="首页"
+                    android:textSize="15sp"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 我的课程 -->
+            <LinearLayout
+                android:id="@+id/navMyCourses"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/navMyCoursesIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="📚"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/navMyCoursesText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="我的课程"
+                    android:textSize="15sp"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 选择课程 -->
+            <LinearLayout
+                android:id="@+id/navSelectCourses"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/navSelectCoursesIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="➕"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/navSelectCoursesText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="选择课程"
+                    android:textSize="15sp"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 消息 -->
+            <LinearLayout
+                android:id="@+id/navMessage"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="💬"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/navMessageText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="消息"
+                    android:textSize="15sp"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- 底部退出按钮 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E8E8E8" />
+
+        <LinearLayout
+            android:id="@+id/navLogout"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingHorizontal="20dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/navLogoutIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="🚪"
+                android:textSize="16sp"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/navLogoutText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="退出登录"
+                android:textSize="15sp"
+                android:textColor="#999999"
+                android:layout_marginStart="12dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ======================== 右侧主内容区域 ======================== -->
+    <LinearLayout
+        android:id="@+id/mainContent"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:background="#F5F5F5">
+
+        <!-- 顶部图片标题栏 -->
+        <ImageView
+            android:id="@+id/headerImage"
+            android:layout_width="match_parent"
+            android:layout_height="230dp"
+            android:src="@drawable/header_bg"
+            android:scaleType="centerCrop"
+            android:contentDescription="顶部标题" />
+
+        <!-- ==================== 首页内容（日历 + 学习计划） ==================== -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/homeContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:padding="16dp"
+            android:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 日历卡片 -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/calendarCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <!-- 月份导航 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="16dp">
+
+                            <TextView
+                                android:id="@+id/prevMonthBtn"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:text="‹"
+                                android:textSize="24sp"
+                                android:textColor="@color/tsinghua_purple"
+                                android:gravity="center"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:background="@drawable/sidebar_item_selector" />
+
+                            <TextView
+                                android:id="@+id/currentMonthText"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text=""
+                                android:textSize="18sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tsinghua_purple_dark"
+                                android:gravity="center" />
+
+                            <TextView
+                                android:id="@+id/nextMonthBtn"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:text="›"
+                                android:textSize="24sp"
+                                android:textColor="@color/tsinghua_purple"
+                                android:gravity="center"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:background="@drawable/sidebar_item_selector" />
+
+                        </LinearLayout>
+
+                        <!-- 星期几标题行 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="日"
+                                android:textSize="13sp"
+                                android:textColor="@color/darker_gray"
+                                android:paddingVertical="4dp" />
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="一"
+                                android:textSize="13sp"
+                                android:textColor="@color/darker_gray"
+                                android:paddingVertical="4dp" />
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="二"
+                                android:textSize="13sp"
+                                android:textColor="@color/darker_gray"
+                                android:paddingVertical="4dp" />
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="三"
+                                android:textSize="13sp"
+                                android:textColor="@color/darker_gray"
+                                android:paddingVertical="4dp" />
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="四"
+                                android:textSize="13sp"
+                                android:textColor="@color/darker_gray"
+                                android:paddingVertical="4dp" />
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="五"
+                                android:textSize="13sp"
+                                android:textColor="@color/darker_gray"
+                                android:paddingVertical="4dp" />
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="六"
+                                android:textSize="13sp"
+                                android:textColor="@color/darker_gray"
+                                android:paddingVertical="4dp" />
+
+                        </LinearLayout>
+
+                        <!-- 日历网格容器（由代码动态填充） -->
+                        <GridLayout
+                            android:id="@+id/calendarGrid"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:columnCount="7" />
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- 选中日期的学习计划 -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/studyPlanCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <!-- 日期标题 -->
+                        <TextView
+                            android:id="@+id/selectedDateTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📅 选择日期查看学习计划"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/tsinghua_purple_dark"
+                            android:layout_marginBottom="16dp" />
+
+                        <!-- 日期显示 -->
+                        <TextView
+                            android:id="@+id/selectedDateDisplay"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text=""
+                            android:textSize="14sp"
+                            android:textColor="@color/darker_gray"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- 今日统计摘要 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="16dp"
+                            android:gravity="center"
+                            android:background="#F8F8F8"
+                            android:padding="12dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center">
+
+                                <TextView
+                                    android:id="@+id/todayTotalMinutes"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="0"
+                                    android:textSize="24sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/tsinghua_purple_dark" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="总学习时长(分钟)"
+                                    android:textSize="12sp"
+                                    android:textColor="#999999"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="1dp"
+                                android:layout_height="36dp"
+                                android:background="#E0E0E0" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center">
+
+                                <TextView
+                                    android:id="@+id/todayCourseCount"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="0"
+                                    android:textSize="24sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/tsinghua_purple_dark" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="学习课程数"
+                                    android:textSize="12sp"
+                                    android:textColor="#999999"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                        <!-- 添加学习记录区域 -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="✏️ 添加学习记录"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/tsinghua_purple_dark"
+                            android:layout_marginBottom="12dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="12dp">
+
+                            <TextView
+                                android:layout_width="50dp"
+                                android:layout_height="wrap_content"
+                                android:text="课程："
+                                android:textSize="14sp"
+                                android:textColor="#666666" />
+
+                            <TextView
+                                android:id="@+id/selectedCourseName"
+                                android:layout_width="0dp"
+                                android:layout_height="40dp"
+                                android:layout_weight="1"
+                                android:text="请先选择课程"
+                                android:textSize="14sp"
+                                android:textColor="@color/tsinghua_purple"
+                                android:gravity="center_vertical"
+                                android:paddingHorizontal="12dp"
+                                android:background="@drawable/edit_text_background"
+                                android:clickable="true"
+                                android:focusable="true" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="16dp">
+
+                            <TextView
+                                android:layout_width="50dp"
+                                android:layout_height="wrap_content"
+                                android:text="时长："
+                                android:textSize="14sp"
+                                android:textColor="#666666" />
+
+                            <EditText
+                                android:id="@+id/studyMinutesInput"
+                                android:layout_width="0dp"
+                                android:layout_height="40dp"
+                                android:layout_weight="1"
+                                android:inputType="number"
+                                android:hint="输入分钟数"
+                                android:textSize="14sp"
+                                android:paddingHorizontal="12dp"
+                                android:background="@drawable/edit_text_background"
+                                android:layout_marginEnd="8dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="分钟"
+                                android:textSize="14sp"
+                                android:textColor="#666666" />
+
+                        </LinearLayout>
+
+                        <Button
+                            android:id="@+id/addStudyRecordBtn"
+                            android:layout_width="match_parent"
+                            android:layout_height="44dp"
+                            android:text="✓ 添加到计划"
+                            android:textSize="15sp"
+                            android:textColor="@color/white"
+                            android:background="@drawable/gradient_tsinghua_purple"
+                            android:gravity="center"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- 学习记录列表 -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/recordsCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📋 学习记录列表"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/tsinghua_purple_dark"
+                            android:layout_marginBottom="12dp" />
+
+                        <LinearLayout
+                            android:id="@+id/emptyRecordsLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="24dp"
+                            android:visibility="visible">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="📝"
+                                android:textSize="36sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="暂无学习记录"
+                                android:textSize="15sp"
+                                android:textColor="#999999"
+                                android:layout_marginTop="8dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="选择日期并添加一条学习记录吧！"
+                                android:textSize="13sp"
+                                android:textColor="#CCCCCC"
+                                android:layout_marginTop="4dp" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/recordsList"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+            </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
+
+        <!-- ==================== 我的课程内容 ==================== -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/myCoursesContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 统计卡片 -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/myCoursesStatsCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📊 我的课程统计"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/tsinghua_purple_dark"
+                            android:layout_marginBottom="12dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:padding="12dp"
+                                android:background="#F8F8F8">
+
+                                <TextView
+                                    android:id="@+id/myCoursesSelectedCount"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="0"
+                                    android:textSize="24sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/tsinghua_purple_dark" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="已选课程"
+                                    android:textSize="13sp"
+                                    android:textColor="#999999"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="12dp"
+                                android:layout_height="0dp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:padding="12dp"
+                                android:background="#F8F8F8">
+
+                                <TextView
+                                    android:id="@+id/myCoursesTotalCredits"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="0"
+                                    android:textSize="24sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/tsinghua_purple_dark" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="总学分"
+                                    android:textSize="13sp"
+                                    android:textColor="#999999"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- 筛选卡片：我的课程 -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/myCoursesFilterCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white"
+                    android:layout_marginBottom="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="12dp"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="分类"
+                            android:textSize="14sp"
+                            android:textColor="@color/darker_gray"
+                            android:layout_marginEnd="8dp" />
+
+                        <Spinner
+                            android:id="@+id/myCoursesCategoryFilter"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="16dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="年份"
+                            android:textSize="14sp"
+                            android:textColor="@color/darker_gray"
+                            android:layout_marginEnd="8dp" />
+
+                        <Spinner
+                            android:id="@+id/myCoursesYearFilter"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1" />
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- 课程列表标题 + 空状态 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📋 已选课程列表"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginBottom="12dp" />
+
+                <LinearLayout
+                    android:id="@+id/emptyMyCoursesLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="32dp"
+                    android:visibility="visible"
+                    android:background="#F8F8F8">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📚"
+                        android:textSize="40sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="暂无已选课程"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#999999"
+                        android:layout_marginTop="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="快去课程列表选择你感兴趣的课程吧！"
+                        android:textSize="13sp"
+                        android:textColor="#CCCCCC"
+                        android:layout_marginTop="4dp" />
+
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/myCoursesRecyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:clipToPadding="false"
+                    android:paddingBottom="8dp" />
+
+            </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
+
+        <!-- ==================== 课程详情内容（测验 + 资料） ==================== -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/courseDetailContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 返回按钮 + 课程名称 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:id="@+id/courseDetailBackBtn"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:text="‹"
+                        android:textSize="28sp"
+                        android:textColor="@color/tsinghua_purple"
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="@drawable/sidebar_item_selector" />
+
+                    <TextView
+                        android:id="@+id/courseDetailTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text=""
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark"
+                        android:layout_marginStart="8dp" />
+
+                </LinearLayout>
+
+                <!-- 授课教师 -->
+                <TextView
+                    android:id="@+id/courseDetailTeacher"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="14sp"
+                    android:textColor="@color/darker_gray"
+                    android:layout_marginBottom="16dp"
+                    android:layout_marginStart="48dp" />
+
+                <!-- Tab 栏 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal"
+                    android:background="@drawable/edit_text_background"
+                    android:layout_marginBottom="16dp">
+
+                    <TextView
+                        android:id="@+id/detailTabQuiz"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="测验"
+                        android:textSize="15sp"
+                        android:textColor="@color/white"
+                        android:gravity="center"
+                        android:background="@drawable/gradient_tsinghua_purple"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/detailTabMaterial"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="资料"
+                        android:textSize="15sp"
+                        android:textColor="@color/tsinghua_purple_dark"
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="@drawable/sidebar_item_selector" />
+
+                </LinearLayout>
+
+                <!-- ========== 测验面板 ========== -->
+                <LinearLayout
+                    android:id="@+id/courseDetailQuizPanel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="visible">
+
+                    <!-- 成绩卡片 -->
+                    <androidx.cardview.widget.CardView
+                        android:id="@+id/quizResultCard"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="2dp"
+                        app:cardBackgroundColor="@color/white"
+                        android:visibility="gone"
+                        android:layout_marginBottom="16dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="20dp"
+                            android:gravity="center">
+
+                            <TextView
+                                android:id="@+id/quizScoreText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text=""
+                                android:textSize="48sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tsinghua_purple" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="得分"
+                                android:textSize="14sp"
+                                android:textColor="#999999"
+                                android:layout_marginBottom="12dp" />
+
+                            <TextView
+                                android:id="@+id/quizCorrectCountText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text=""
+                                android:textSize="15sp"
+                                android:textColor="@color/darker_gray" />
+
+                            <TextView
+                                android:id="@+id/quizSubmittedAtText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text=""
+                                android:textSize="13sp"
+                                android:textColor="#CCCCCC"
+                                android:layout_marginTop="4dp" />
+
+                        </LinearLayout>
+
+                    </androidx.cardview.widget.CardView>
+
+                    <!-- 题目加载中 -->
+                    <TextView
+                        android:id="@+id/quizLoadingText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="正在加载题目..."
+                        android:textSize="15sp"
+                        android:textColor="#999999"
+                        android:gravity="center"
+                        android:padding="24dp"
+                        android:visibility="gone" />
+
+                    <!-- 题目空状态 -->
+                    <TextView
+                        android:id="@+id/quizEmptyText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="暂无题目"
+                        android:textSize="15sp"
+                        android:textColor="#999999"
+                        android:gravity="center"
+                        android:padding="24dp"
+                        android:visibility="gone" />
+
+                    <!-- 题目列表容器 -->
+                    <LinearLayout
+                        android:id="@+id/quizQuestionsContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone" />
+
+                    <!-- 提交按钮 -->
+                    <Button
+                        android:id="@+id/quizSubmitBtn"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:text="提交答案"
+                        android:textSize="15sp"
+                        android:textColor="@color/white"
+                        android:background="@drawable/gradient_tsinghua_purple"
+                        android:visibility="gone"
+                        android:layout_marginTop="16dp" />
+
+                </LinearLayout>
+
+                <!-- ========== 资料面板 ========== -->
+                <LinearLayout
+                    android:id="@+id/courseDetailMaterialPanel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <!-- 资料加载中 -->
+                    <TextView
+                        android:id="@+id/materialLoadingText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="正在加载资料..."
+                        android:textSize="15sp"
+                        android:textColor="#999999"
+                        android:gravity="center"
+                        android:padding="24dp"
+                        android:visibility="gone" />
+
+                    <!-- 资料列表容器 -->
+                    <LinearLayout
+                        android:id="@+id/materialListLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone" />
+
+                    <!-- 资料空状态 -->
+                    <TextView
+                        android:id="@+id/materialEmptyText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="暂无资料"
+                        android:textSize="15sp"
+                        android:textColor="#999999"
+                        android:gravity="center"
+                        android:padding="24dp"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
+
+        <!-- ==================== 选择课程内容 ==================== -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/selectCoursesContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 统计卡片 -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/selectCoursesStatsCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="16dp"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:text="📊"
+                            android:textSize="32sp"
+                            android:gravity="center" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:paddingStart="12dp">
+
+                            <TextView
+                                android:id="@+id/selectCoursesSelectedCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="已选课程：0门"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/tsinghua_purple_dark" />
+
+                            <TextView
+                                android:id="@+id/selectCoursesTotalCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="总课程数：0门"
+                                android:textSize="13sp"
+                                android:textColor="#999999"
+                                android:layout_marginTop="4dp" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- 筛选卡片：选择课程 -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/selectCoursesFilterCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white"
+                    android:layout_marginBottom="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="12dp"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="分类"
+                            android:textSize="14sp"
+                            android:textColor="@color/darker_gray"
+                            android:layout_marginEnd="8dp" />
+
+                        <Spinner
+                            android:id="@+id/selectCoursesCategoryFilter"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="16dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="年份"
+                            android:textSize="14sp"
+                            android:textColor="@color/darker_gray"
+                            android:layout_marginEnd="8dp" />
+
+                        <Spinner
+                            android:id="@+id/selectCoursesYearFilter"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1" />
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- 课程列表 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="所有课程"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginBottom="12dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/selectCoursesRecyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:paddingBottom="8dp" />
+
+            </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
+
+        <!-- ==================== 消息 Fragment 容器 ==================== -->
+        <FrameLayout
+            android:id="@+id/chatFragmentContainer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,819 @@
+package com.example.studyapp
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.PlaybackException
+import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.ui.PlayerView
+import com.google.android.exoplayer2.trackselection.Tracks
+
+/**
+ * 使用ExoPlayer的视频播放Activity
+ * ExoPlayer提供更好的视频格式兼容性和流媒体支持
+ */
+class ExoVideoPlayerActivity : AppCompatActivity() {
+
+    private lateinit var playerView: PlayerView
+    private lateinit var loadingTextView: TextView
+    private lateinit var errorTextView: TextView
+    private var player: ExoPlayer? = null
+    private var playbackSpeed = 1.0f
+    private var isMuted = false
+    private var isFullscreen = false
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    companion object {
+        const val EXTRA_VIDEO_URL = "extra_video_url"
+        const val EXTRA_COURSE_NAME = "extra_course_name"
+        private const val TAG = "ExoVideoPlayerActivity"
+        // 测试视频URL（公共MP4，用于测试播放功能）
+        private const val TEST_VIDEO_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_exo_video_player)
+
+        // 初始化视图
+        initViews()
+
+        // 获取Intent传递的数据
+        val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL)
+        val courseName = intent.getStringExtra(EXTRA_COURSE_NAME) ?: "课程视频"
+
+        // 设置Activity标题为课程名称
+        supportActionBar?.title = courseName
+
+        if (videoUrl.isNullOrEmpty()) {
+            // 视频URL为空，显示错误提示并返回
+            showErrorMessage("视频地址无效，无法播放")
+            finish()
+            return
+        }
+
+        // 打印URL用于调试
+        Log.d(TAG, "准备使用ExoPlayer播放视频，URL: $videoUrl")
+        Log.d(TAG, "课程名称: $courseName")
+
+        // 设置ExoPlayer播放器
+        setupExoPlayer(videoUrl)
+    }
+
+    /**
+     * 初始化视图
+     */
+    private fun initViews() {
+        playerView = findViewById(R.id.playerView)
+        loadingTextView = findViewById(R.id.loadingTextView)
+        errorTextView = findViewById(R.id.errorTextView)
+
+        // 初始化Toolbar并设置返回按钮
+        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.setDisplayShowHomeEnabled(true)
+
+        // 设置Toolbar标题为课程名称
+        val courseName = intent.getStringExtra(EXTRA_COURSE_NAME) ?: "课程视频"
+        supportActionBar?.title = courseName
+
+        // 初始化自定义控制器按钮（即使播放失败，按钮也可用）
+        setupCustomControls()
+
+        Log.d(TAG, "ExoPlayer初始化完成")
+    }
+
+    /**
+     * 显示加载状态
+     */
+    private fun showLoading() {
+        loadingTextView.visibility = android.view.View.VISIBLE
+        errorTextView.visibility = android.view.View.GONE
+    }
+
+    /**
+     * 显示错误状态
+     */
+    private fun showError() {
+        loadingTextView.visibility = android.view.View.GONE
+        errorTextView.visibility = android.view.View.VISIBLE
+    }
+
+    /**
+     * 显示播放状态（隐藏所有提示）
+     */
+    private fun showPlaying() {
+        loadingTextView.visibility = android.view.View.GONE
+        errorTextView.visibility = android.view.View.GONE
+    }
+
+    /**
+     * 设置自定义控制器按钮
+     */
+    private fun setupCustomControls() {
+        try {
+            // 获取倍速按钮
+            val speedButton = playerView.findViewById<android.widget.ImageButton>(R.id.exo_speed)
+            speedButton?.setOnClickListener {
+                showSpeedSelectionDialog()
+            }
+
+            // 获取音量按钮
+            val volumeButton = playerView.findViewById<android.widget.ImageButton>(R.id.exo_volume)
+            volumeButton?.setOnClickListener {
+                toggleMute()
+            }
+
+            // 获取全屏按钮
+            val fullscreenButton = playerView.findViewById<android.widget.ImageButton>(R.id.exo_fullscreen)
+            fullscreenButton?.setOnClickListener {
+                toggleFullscreen()
+            }
+
+            // 获取诊断按钮
+            val diagnosticButton = playerView.findViewById<android.widget.ImageButton>(R.id.exo_diagnostic)
+            diagnosticButton?.setOnClickListener {
+                showVideoDiagnostics()
+            }
+
+            // 获取退出按钮
+            val exitButton = playerView.findViewById<android.widget.ImageButton>(R.id.exo_exit)
+            exitButton?.setOnClickListener {
+                exitPlayer()
+            }
+
+            Log.d(TAG, "自定义控制器按钮初始化完成")
+        } catch (e: Exception) {
+            Log.e(TAG, "设置自定义控制器按钮失败: ${e.message}", e)
+        }
+    }
+
+    /**
+     * 显示倍速选择对话框
+     */
+    private fun showSpeedSelectionDialog() {
+        val speeds = arrayOf("0.5x", "0.75x", "1.0x", "1.25x", "1.5x", "2.0x")
+        val currentSpeedIndex = when (playbackSpeed) {
+            0.5f -> 0
+            0.75f -> 1
+            1.0f -> 2
+            1.25f -> 3
+            1.5f -> 4
+            2.0f -> 5
+            else -> 2
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("选择播放速度")
+            .setSingleChoiceItems(speeds, currentSpeedIndex) { dialog, which ->
+                val newSpeed = when (which) {
+                    0 -> 0.5f
+                    1 -> 0.75f
+                    2 -> 1.0f
+                    3 -> 1.25f
+                    4 -> 1.5f
+                    5 -> 2.0f
+                    else -> 1.0f
+                }
+                setPlaybackSpeed(newSpeed)
+                dialog.dismiss()
+            }
+            .setNegativeButton("取消") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    /**
+     * 设置播放速度
+     * @param speed 播放速度 (0.5, 0.75, 1.0, 1.25, 1.5, 2.0)
+     */
+    private fun setPlaybackSpeed(speed: Float) {
+        playbackSpeed = speed
+        player?.setPlaybackSpeed(speed)
+        Toast.makeText(this, "播放速度: ${speed}x", Toast.LENGTH_SHORT).show()
+        Log.d(TAG, "设置播放速度: ${speed}x")
+    }
+
+    /**
+     * 切换静音状态
+     */
+    private fun toggleMute() {
+        isMuted = !isMuted
+        val volume = if (isMuted) 0f else 1f
+        player?.volume = volume
+
+        // 更新音量按钮图标
+        val volumeButton = playerView.findViewById<android.widget.ImageButton>(R.id.exo_volume)
+        volumeButton?.setImageResource(
+            if (isMuted) R.drawable.ic_volume_off else R.drawable.ic_volume_up
+        )
+
+        val message = if (isMuted) "已静音" else "已取消静音"
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        Log.d(TAG, "切换静音状态: $message")
+    }
+
+    /**
+     * 切换全屏状态
+     */
+    private fun toggleFullscreen() {
+        isFullscreen = !isFullscreen
+        if (isFullscreen) {
+            // 进入全屏模式
+            supportActionBar?.hide()
+            window.decorView.systemUiVisibility = (
+                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                        or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                )
+            Toast.makeText(this, "进入全屏模式", Toast.LENGTH_SHORT).show()
+        } else {
+            // 退出全屏模式
+            supportActionBar?.show()
+            window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
+            Toast.makeText(this, "退出全屏模式", Toast.LENGTH_SHORT).show()
+        }
+        Log.d(TAG, "切换全屏状态: $isFullscreen")
+    }
+
+    /**
+     * 退出播放器
+     */
+    private fun exitPlayer() {
+        Log.d(TAG, "用户点击退出按钮")
+        // 显示确认对话框
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("退出播放")
+            .setMessage("确定要退出视频播放吗？")
+            .setPositiveButton("确定") { dialog, _ ->
+                dialog.dismiss()
+                finish()
+            }
+            .setNegativeButton("取消") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    /**
+     * 设置ExoPlayer播放器
+     * @param videoUrl 视频URL地址
+     */
+    private fun setupExoPlayer(videoUrl: String) {
+        try {
+            Log.d(TAG, "开始设置ExoPlayer播放器，URL: $videoUrl")
+
+            // 显示加载状态
+            showLoading()
+
+            // 创建URI对象
+            val videoUri = Uri.parse(videoUrl)
+            Log.d(TAG, "解析后的URI: $videoUri")
+
+            // 创建ExoPlayer实例
+            player = ExoPlayer.Builder(this).build()
+
+            // 创建MediaItem
+            val mediaItem = MediaItem.fromUri(videoUri)
+
+            // 设置播放器到PlayerView
+            playerView.player = player
+
+            // 设置监听器
+            player?.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    when (playbackState) {
+                        Player.STATE_IDLE -> {
+                            Log.d(TAG, "播放器状态: IDLE")
+                        }
+                        Player.STATE_BUFFERING -> {
+                            Log.d(TAG, "播放器状态: BUFFERING - 正在缓冲...")
+                            showLoading()
+                        }
+                        Player.STATE_READY -> {
+                            Log.d(TAG, "播放器状态: READY - 准备播放")
+                            showPlaying()
+                            Toast.makeText(this@ExoVideoPlayerActivity, "视频加载完成，开始播放", Toast.LENGTH_SHORT).show()
+
+                            // 当状态变为READY时，获取视频格式信息
+                            val format = player?.videoFormat
+                            if (format != null) {
+                                Log.d(TAG, "视频格式详情:")
+                                Log.d(TAG, "  MIME类型: ${format.sampleMimeType}")
+                                Log.d(TAG, "  编解码器: ${format.codecs}")
+                                Log.d(TAG, "  宽度: ${format.width}, 高度: ${format.height}")
+                                Log.d(TAG, "  帧率: ${format.frameRate}")
+                                Log.d(TAG, "  比特率: ${format.bitrate}")
+                                Log.d(TAG, "  容器类型: ${format.containerMimeType}")
+                            } else {
+                                Log.d(TAG, "无法获取视频格式信息")
+                            }
+
+                            // 获取视频尺寸信息
+                            val videoSize = player?.videoSize
+                            if (videoSize != null) {
+                                Log.d(TAG, "视频尺寸: ${videoSize.width}x${videoSize.height}")
+                                Log.d(TAG, "像素宽高比: ${videoSize.pixelWidthHeightRatio}")
+                                Log.d(TAG, "未缩放大小: ${videoSize.unappliedRotationDegrees}°")
+                            } else {
+                                Log.d(TAG, "视频尺寸信息为空")
+                            }
+                        }
+                        Player.STATE_ENDED -> {
+                            Log.d(TAG, "播放器状态: ENDED - 播放完成")
+                            Toast.makeText(this@ExoVideoPlayerActivity, "视频播放完成", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    Log.e(TAG, "ExoPlayer播放错误: ${error.message}", error)
+                    showError()
+                    showErrorMessage("视频播放失败: ${error.message}")
+                }
+
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    Log.d(TAG, "播放状态变化: $isPlaying")
+                    if (isPlaying) {
+                        Log.d(TAG, "视频正在播放...")
+                    }
+                }
+
+                override fun onVideoSizeChanged(videoSize: com.google.android.exoplayer2.video.VideoSize) {
+                    Log.d(TAG, "★★★ 视频尺寸变化: ${videoSize.width}x${videoSize.height}")
+                    Log.d(TAG, "  像素宽高比: ${videoSize.pixelWidthHeightRatio}")
+                    Log.d(TAG, "  未缩放大小: ${videoSize.unappliedRotationDegrees}°")
+
+                    // 检查是否有有效尺寸
+                    if (videoSize.width > 0 && videoSize.height > 0) {
+                        Log.d(TAG, "✓ 视频有有效尺寸，应该可以显示画面")
+                    } else {
+                        Log.e(TAG, "✗ 视频尺寸无效（宽度或高度为0），可能无法显示画面")
+                    }
+                }
+
+                override fun onRenderedFirstFrame() {
+                    Log.d(TAG, "★★★ 第一帧渲染完成！视频应该可见了 ★★★")
+                    Toast.makeText(this@ExoVideoPlayerActivity, "第一帧渲染完成", Toast.LENGTH_SHORT).show()
+                }
+
+                override fun onTracksChanged(tracks: Tracks) {
+                    Log.d(TAG, "★★★ 轨道信息变化 ★★★")
+                    val trackGroups = tracks.groups
+                    Log.d(TAG, "轨道组数量: ${trackGroups.size}")
+
+                    var hasVideo = false
+                    var hasAudio = false
+
+                    for (group in trackGroups) {
+                        Log.d(TAG, "轨道组类型: ${group.type}, 轨道数量: ${group.length}, 是否选择: ${group.isSelected}")
+
+                        when (group.type) {
+                            com.google.android.exoplayer2.C.TRACK_TYPE_VIDEO -> {
+                                hasVideo = true
+                                Log.d(TAG, "✓ 检测到视频轨道")
+                            }
+                            com.google.android.exoplayer2.C.TRACK_TYPE_AUDIO -> {
+                                hasAudio = true
+                                Log.d(TAG, "✓ 检测到音频轨道")
+                            }
+                            com.google.android.exoplayer2.C.TRACK_TYPE_TEXT -> {
+                                Log.d(TAG, "检测到文本轨道（字幕）")
+                            }
+                            else -> {
+                                Log.d(TAG, "检测到其他类型轨道: ${group.type}")
+                            }
+                        }
+                    }
+
+                    Log.d(TAG, "轨道总结: 视频=$hasVideo, 音频=$hasAudio")
+
+                    if (hasAudio && !hasVideo) {
+                        Log.e(TAG, "⚠️ 警告: 只有音频轨道，没有视频轨道！")
+                        Toast.makeText(this@ExoVideoPlayerActivity, "检测到音频但无视频轨道", Toast.LENGTH_LONG).show()
+                    }
+                }
+            })
+
+            // 准备播放
+            player?.setMediaItem(mediaItem)
+            player?.prepare()
+            player?.playWhenReady = true // 自动开始播放
+
+            // 设置自定义控制器
+            setupCustomControls()
+
+            Log.d(TAG, "ExoPlayer设置完成，开始播放")
+
+        } catch (e: Exception) {
+            // 异常处理
+            Log.e(TAG, "ExoPlayer播放设置异常: ${e.message}", e)
+            showError()
+            showErrorMessage("ExoPlayer播放设置失败: ${e.message}")
+        }
+    }
+
+    /**
+     * 显示OSS权限检查指导
+     */
+    private fun showOssPermissionGuide(videoUrl: String) {
+        val ossGuide = """
+            阿里云OSS权限检查指南
+            ======================
+
+            您的视频URL返回了403错误（禁止访问），这通常是由于：
+
+            1. **Bucket未设置公共读权限**
+               - 登录阿里云OSS控制台
+               - 找到Bucket: ${com.example.studyapp.manager.OSSConfig.OSS_BUCKET_NAME}
+               - 点击"权限管理" > "公共读"设置为"公共读(public read)"
+
+            2. **Bucket跨域设置(CORS)问题**
+               - 在Bucket的"跨域设置"中添加允许的来源
+               - 来源: *
+               - 允许Methods: GET, HEAD
+               - 允许Headers: *
+
+            3. **Endpoint配置问题**
+               当前Endpoint: ${com.example.studyapp.manager.OSSConfig.OSS_ENDPOINT}
+               视频URL格式应为: https://${com.example.studyapp.manager.OSSConfig.OSS_BUCKET_NAME}.${com.example.studyapp.manager.OSSConfig.OSS_ENDPOINT}/...
+               请检查您的视频URL格式是否正确
+
+            4. **网络限制**
+               - 确保设备可以访问外网
+               - 检查是否有防火墙限制访问阿里云OSS
+
+            请按上述步骤检查后重试。
+        """.trimIndent()
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("OSS权限问题")
+            .setMessage(ossGuide)
+            .setPositiveButton("复制指导") { dialog, _ ->
+                dialog.dismiss()
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = android.content.ClipData.newPlainText("OSS权限指导", ossGuide)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(this, "指导已复制到剪贴板", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("关闭") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    /**
+     * 显示模拟器网络配置指导
+     */
+    private fun showEmulatorNetworkGuide() {
+        val networkGuide = """
+            Android模拟器网络配置指南
+            ========================
+
+            您的Android模拟器无法访问网络，这通常是由于：
+
+            1. **检查模拟器网络设置**
+               - 在模拟器中打开"设置" > "网络和互联网"
+               - 确保Wi-Fi或移动数据已启用
+               - 尝试切换飞行模式再关闭
+
+            2. **重启模拟器网络**
+               - 关闭模拟器
+               - 在Android Studio中: Tools > AVD Manager
+               - 点击"Cold Boot Now"重启模拟器
+
+            3. **修改模拟器网络配置**
+               - 在AVD Manager中编辑模拟器
+               - 点击"Show Advanced Settings"
+               - 在"Network"部分选择"Native"
+               - 或者尝试不同的网络配置
+
+            4. **检查主机防火墙**
+               - 确保Windows防火墙未阻止模拟器网络
+               - 尝试暂时禁用防火墙测试
+
+            5. **使用命令行启动模拟器**
+               - 关闭当前模拟器
+               - 打开命令提示符，运行:
+                 emulator -avd <模拟器名称> -dns-server 8.8.8.8
+
+            6. **测试网络连接**
+               - 在模拟器中打开浏览器测试访问网页
+               - 使用adb命令测试: adb shell ping 8.8.8.8
+
+            请按上述步骤检查后重试播放。
+        """.trimIndent()
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("模拟器网络问题")
+            .setMessage(networkGuide)
+            .setPositiveButton("复制指导") { dialog, _ ->
+                dialog.dismiss()
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = android.content.ClipData.newPlainText("模拟器网络指导", networkGuide)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(this, "指导已复制到剪贴板", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("关闭") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    /**
+     * 显示错误消息
+     */
+    private fun showErrorMessage(message: String) {
+        Log.e(TAG, "显示错误消息: $message")
+        // 显示错误状态
+        showError()
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+
+        // 获取视频URL
+        val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
+
+        // 显示详细的错误对话框
+        val dialogBuilder = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("ExoPlayer播放错误")
+            .setMessage(message)
+            .setPositiveButton("确定") { dialog, _ ->
+                dialog.dismiss()
+                finish()
+            }
+            .setNegativeButton("重试") { dialog, _ ->
+                dialog.dismiss()
+                // 重新尝试播放
+                if (!videoUrl.isNullOrEmpty()) {
+                    setupExoPlayer(videoUrl)
+                }
+            }
+            .setCancelable(false)
+
+        // 简化错误处理：始终显示切换到VideoView的选项
+        dialogBuilder.setNeutralButton("切换到VideoView") { dialog, _ ->
+            dialog.dismiss()
+            // 使用原始VideoPlayerActivity
+            val intent = Intent(this, VideoPlayerActivity::class.java)
+            intent.putExtra(VideoPlayerActivity.EXTRA_VIDEO_URL, videoUrl)
+            intent.putExtra(VideoPlayerActivity.EXTRA_COURSE_NAME,
+                intent.getStringExtra(EXTRA_COURSE_NAME) ?: "课程视频")
+            startActivity(intent)
+            finish()
+        }
+
+        dialogBuilder.show()
+    }
+
+    /**
+     * 显示视频诊断信息
+     */
+    private fun showVideoDiagnostics() {
+        val diagnostics = buildString {
+            append("ExoPlayer视频诊断信息\n")
+            append("=====================\n\n")
+
+            // 播放器状态
+            append("播放器状态:\n")
+            val playerState = player?.playbackState
+            append("播放状态: ${when (playerState) {
+                Player.STATE_IDLE -> "IDLE"
+                Player.STATE_BUFFERING -> "BUFFERING"
+                Player.STATE_READY -> "READY"
+                Player.STATE_ENDED -> "ENDED"
+                else -> "未知 ($playerState)"
+            }}\n")
+            append("是否正在播放: ${player?.isPlaying ?: false}\n")
+            append("播放速度: ${playbackSpeed}x\n")
+            append("静音状态: $isMuted\n")
+            append("全屏状态: $isFullscreen\n")
+
+            // 视频信息
+            append("\n视频信息:\n")
+            val currentMediaItem = player?.currentMediaItem
+            if (currentMediaItem != null) {
+                val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
+                append("URL: ${videoUrl.take(80)}...\n")
+                append("媒体ID: ${currentMediaItem.mediaId}\n")
+            } else {
+                append("没有当前媒体项\n")
+            }
+
+            // 格式信息（如果可用）
+            val videoFormatInfo = player?.videoFormat
+            if (videoFormatInfo != null) {
+                append("视频格式:\n")
+                append("  宽度: ${videoFormatInfo.width}\n")
+                append("  高度: ${videoFormatInfo.height}\n")
+                append("  帧率: ${videoFormatInfo.frameRate}\n")
+                append("  比特率: ${videoFormatInfo.bitrate}\n")
+                append("  MIME类型: ${videoFormatInfo.sampleMimeType}\n")
+                append("  编解码器: ${videoFormatInfo.codecs}\n")
+            } else {
+                append("视频格式: 未获取到格式信息\n")
+            }
+
+            // 渲染信息
+            append("\n渲染信息:\n")
+            val videoSize = player?.videoSize
+            if (videoSize != null) {
+                append("视频尺寸: ${videoSize.width}x${videoSize.height}\n")
+                append("像素宽高比: ${videoSize.pixelWidthHeightRatio}\n")
+                append("未缩放大小: ${videoSize.unappliedRotationDegrees}°\n")
+            } else {
+                append("视频尺寸: 未获取到尺寸信息\n")
+            }
+
+            // PlayerView状态
+            append("\nPlayerView状态:\n")
+            append("宽度: ${playerView.width}, 高度: ${playerView.height}\n")
+            append("可见性: ${playerView.visibility} (0=VISIBLE, 4=INVISIBLE, 8=GONE)\n")
+            append("是否有焦点: ${playerView.hasFocus()}\n")
+            append("Surface类型: texture_view\n")
+
+            // 硬件加速状态
+            append("\n硬件加速状态:\n")
+            try {
+                val window = window
+                val hasHardwareAccel = window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED != 0
+                append("Window硬件加速: ${if (hasHardwareAccel) "已启用 ✓" else "未启用 ✗"}\n")
+                append("PlayerView硬件加速: ${if (playerView.isHardwareAccelerated) "已启用 ✓" else "未启用 ✗"}\n")
+            } catch (e: Exception) {
+                append("硬件加速检查失败: ${e.message}\n")
+            }
+
+            // HEVC/H.265兼容性检查
+            append("\n编解码器兼容性检查:\n")
+            val videoFormat = player?.videoFormat
+            if (videoFormat != null && videoFormat.sampleMimeType != null) {
+                val mimeType = videoFormat.sampleMimeType ?: ""
+                val codecs = videoFormat.codecs ?: ""
+                append("检测到MIME类型: $mimeType\n")
+                append("检测到编解码器: $codecs\n")
+
+                if (mimeType.contains("hevc") || mimeType.contains("h265") ||
+                    codecs.contains("hevc") || codecs.contains("hvc") || codecs.contains("h265")) {
+                    append("⚠️ 警告: HEVC/H.265格式检测\n")
+                    append("   - HEVC/H.265需要Android 5.0+支持\n")
+                    append("   - 某些设备可能缺乏硬件解码支持\n")
+                    append("   - 模拟器可能不完全支持HEVC\n")
+                    append("   - 建议使用H.264 (AVC)格式: video/avc\n")
+                } else if (mimeType.contains("avc") || mimeType.contains("h264")) {
+                    append("✓ 使用H.264/AVC格式，兼容性良好\n")
+                } else {
+                    append("? 未知视频格式，可能存在兼容性问题\n")
+                }
+            } else {
+                append("无法获取视频格式信息\n")
+            }
+
+            // 建议
+            append("\n可能的解决方案:\n")
+            append("1. HEVC/H.265格式可能不兼容 - 尝试使用H.264格式视频\n")
+            append("2. Surface类型已设置为texture_view\n")
+            append("3. 硬件加速已启用\n")
+            append("4. 尝试播放测试视频验证播放器功能\n")
+            append("5. 检查视频轨道是否存在渲染问题\n")
+        }
+
+        val options = arrayOf("复制诊断信息", "尝试修复渲染", "播放测试视频", "切换到VideoView", "关闭")
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("视频诊断信息")
+            .setMessage(diagnostics)
+            .setItems(options) { dialog, which ->
+                dialog.dismiss()
+                when (which) {
+                    0 -> { // 复制诊断信息
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("视频诊断", diagnostics)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(this, "诊断信息已复制", Toast.LENGTH_SHORT).show()
+                    }
+                    1 -> { // 尝试修复渲染
+                        attemptVideoRenderFix()
+                    }
+                    2 -> { // 播放测试视频
+                        playTestVideo()
+                    }
+                    3 -> { // 切换到VideoView
+                        val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
+                        val courseName = intent.getStringExtra(EXTRA_COURSE_NAME) ?: "课程视频"
+                        val intent = Intent(this, VideoPlayerActivity::class.java)
+                        intent.putExtra(VideoPlayerActivity.EXTRA_VIDEO_URL, videoUrl)
+                        intent.putExtra(VideoPlayerActivity.EXTRA_COURSE_NAME, courseName)
+                        startActivity(intent)
+                        finish()
+                    }
+                    4 -> { // 关闭
+                        // 什么都不做，对话框已关闭
+                    }
+                }
+            }
+            .show()
+    }
+
+    /**
+     * 尝试修复视频渲染问题
+     */
+    private fun attemptVideoRenderFix() {
+        Log.d(TAG, "尝试修复视频渲染问题")
+        Toast.makeText(this, "尝试修复视频渲染...", Toast.LENGTH_SHORT).show()
+
+        // 方法1: 切换Surface类型
+        playerView.setUseController(true)
+        playerView.setShowBuffering(com.google.android.exoplayer2.ui.PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+
+        // 方法2: 重新设置播放器
+        val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL)
+        if (!videoUrl.isNullOrEmpty()) {
+            handler.postDelayed({
+                Log.d(TAG, "重新设置ExoPlayer播放器")
+                setupExoPlayer(videoUrl)
+                Toast.makeText(this, "已尝试重新设置播放器", Toast.LENGTH_SHORT).show()
+            }, 500)
+        }
+
+        // 方法3: 强制重新布局
+        playerView.requestLayout()
+        playerView.invalidate()
+
+        // 显示修复结果
+        handler.postDelayed({
+            showVideoDiagnostics()
+        }, 1000)
+    }
+
+    /**
+     * 播放测试视频（标准H.264格式）
+     */
+    private fun playTestVideo() {
+        Log.d(TAG, "开始播放测试视频")
+        Toast.makeText(this, "正在加载测试视频...", Toast.LENGTH_SHORT).show()
+
+        // 使用公共测试视频（H.264格式，兼容性最好）
+        val testVideoUrl = TEST_VIDEO_URL
+
+        // 停止当前播放器
+        player?.stop()
+        player?.release()
+        player = null
+
+        // 重新设置播放器播放测试视频
+        handler.postDelayed({
+            setupExoPlayer(testVideoUrl)
+            Toast.makeText(this, "已切换到测试视频（H.264格式）", Toast.LENGTH_LONG).show()
+        }, 500)
+    }
+
+    /**
+     * 当Activity暂停时，暂停播放
+     */
+    override fun onPause() {
+        super.onPause()
+        player?.pause()
+    }
+
+    /**
+     * 当Activity恢复时，继续播放
+     */
+    override fun onResume() {
+        super.onResume()
+        player?.play()
+    }
+
+    /**
+     * 处理Toolbar菜单项点击
+     */
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        when (item.itemId) {
+            android.R.id.home -> {
+                // 返回按钮点击
+                finish()
+                return true
+            }
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    /**
+     * 当Activity销毁时，释放播放器资源
+     */
+    override fun onDestroy() {
+        super.onDestroy()
+        // 释放播放器资源
+        player?.release()
+        player = null
+        Log.d(TAG, "ExoVideoPlayerActivity销毁完成")
+    }
+}

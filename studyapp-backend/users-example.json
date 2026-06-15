@@ -1,0 +1,25 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "student001",
+      "password": "123456",
+      "role": "student",
+      "createdAt": "2026-04-19T12:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "username": "teacher001",
+      "password": "123456",
+      "role": "teacher",
+      "createdAt": "2026-04-19T12:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "username": "admin001",
+      "password": "123456",
+      "role": "admin",
+      "createdAt": "2026-04-19T12:00:00.000Z"
+    }
+  ]
+}

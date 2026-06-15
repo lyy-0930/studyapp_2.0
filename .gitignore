@@ -1,0 +1,55 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# ============================
+# 安全 - 密钥与凭证文件
+# ============================
+# 环境变量文件（包含数据库密码、API Key 等敏感信息）
+.env
+.env.*
+!.env.example
+
+# SSL/TLS 证书文件
+*.pem
+*.key
+*.cert
+*.crt
+*.csr
+cert/
+certs/
+
+# SSH 密钥
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# 其他敏感配置文件
+secrets.*
+config.*.local
+
+# ============================
+# 运行时生成的文件
+# ============================
+# Node.js 依赖
+node_modules/
+
+# 上传的文件（视频、图片、资料等）
+studyapp-backend/uploads/
+
+# 日志文件
+*.log
+logs/

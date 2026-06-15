@@ -1,0 +1,460 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent">
+
+    <!-- 顶部渐变遮罩 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:background="#CC0A1528" />
+
+    <!-- 底部渐变遮罩 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_gravity="bottom"
+        android:background="#880A1528" />
+
+    <!-- 可滚动内容 -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="16dp">
+
+            <!-- ==================== 头部 ==================== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:layout_marginTop="6dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:text="◎"
+                        android:textSize="18sp"
+                        android:textColor="#4DA3FF"
+                        android:gravity="center"
+                        android:background="#2200A0FF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="管理员大屏"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="10dp" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/monitorRefreshTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="11sp"
+                    android:textColor="#5A7A9A"
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:id="@+id/monitorRefreshBtn"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:text="↻"
+                    android:textSize="20sp"
+                    android:textColor="#4DA3FF"
+                    android:gravity="center"
+                    android:background="@drawable/ic_button_background_selector"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+            </LinearLayout>
+
+            <!-- 加载文字 -->
+            <TextView
+                android:id="@+id/monitorLoadingText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="加载中..."
+                android:textSize="14sp"
+                android:textColor="#5A7A9A"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="20dp"
+                android:visibility="gone" />
+
+            <!-- ==================== 顶部统计卡片行 ==================== -->
+            <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginTop="10dp">
+
+                <!-- 今日学习人数 -->
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/monitor_stat_card_bg">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="10dp"
+                        android:gravity="center">
+
+                        <TextView
+                            android:id="@+id/dashTodayStudy"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="--"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:textColor="#4DA3FF" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="今日学习人数"
+                            android:textSize="10sp"
+                            android:textColor="#7A9AB5"
+                            android:layout_marginTop="2dp"
+                            android:singleLine="true" />
+
+                    </LinearLayout>
+
+                </FrameLayout>
+
+                <!-- 今日新增用户 -->
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/monitor_stat_card_bg">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="10dp"
+                        android:gravity="center">
+
+                        <TextView
+                            android:id="@+id/dashTodayNewUsers"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="--"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:textColor="#7CDFA0" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="今日新增用户"
+                            android:textSize="10sp"
+                            android:textColor="#7A9AB5"
+                            android:layout_marginTop="2dp"
+                            android:singleLine="true" />
+
+                    </LinearLayout>
+
+                </FrameLayout>
+
+                <!-- 在线人数 -->
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/monitor_stat_card_bg">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="10dp"
+                        android:gravity="center">
+
+                        <TextView
+                            android:id="@+id/dashOnlineCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="--"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:textColor="#F9C96A" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="在线人数"
+                            android:textSize="10sp"
+                            android:textColor="#7A9AB5"
+                            android:layout_marginTop="2dp"
+                            android:singleLine="true" />
+
+                    </LinearLayout>
+
+                </FrameLayout>
+
+                <!-- 平均学习时长 -->
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/monitor_stat_card_bg">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="10dp"
+                        android:gravity="center">
+
+                        <TextView
+                            android:id="@+id/dashAvgStudyTime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="--"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:textColor="#A78BFA" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="平均学习时长"
+                            android:textSize="10sp"
+                            android:textColor="#7A9AB5"
+                            android:layout_marginTop="2dp"
+                            android:singleLine="true" />
+
+                    </LinearLayout>
+
+                </FrameLayout>
+
+            </LinearLayout>
+
+            <!-- ==================== 中间行：活跃排行榜 + 课程热度排行 + 学习趋势 ==================== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:layout_marginTop="10dp"
+                android:weightSum="3">
+
+                <!-- 活跃排行榜 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="220dp"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/monitor_stat_card_bg"
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="活跃排行榜"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#8AAAC0"
+                        android:layout_marginBottom="6dp" />
+
+                    <LinearLayout
+                        android:id="@+id/dashActivityRanking"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+                <!-- 课程热度排行 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="220dp"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/monitor_stat_card_bg"
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="课程热度排行"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#8AAAC0"
+                        android:layout_marginBottom="6dp" />
+
+                    <LinearLayout
+                        android:id="@+id/dashCourseRanking"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+                <!-- 学习趋势折线图 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="220dp"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/monitor_stat_card_bg"
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="学习趋势"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#8AAAC0"
+                        android:layout_marginBottom="6dp" />
+
+                    <LinearLayout
+                        android:id="@+id/dashLearningTrend"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="bottom" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ==================== 底行：课程掌握度 + 学生完成率 + 学习时段 ==================== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:layout_marginTop="10dp"
+                android:weightSum="3">
+
+                <!-- 课程掌握度分析 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="200dp"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/monitor_stat_card_bg"
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="课程掌握度分析"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#8AAAC0"
+                        android:layout_marginBottom="6dp" />
+
+                    <LinearLayout
+                        android:id="@+id/dashMasteryAnalysis"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+                <!-- 学生完成率 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="200dp"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/monitor_stat_card_bg"
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="学生完成率"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#8AAAC0"
+                        android:layout_marginBottom="6dp" />
+
+                    <LinearLayout
+                        android:id="@+id/dashCompletionRate"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+                <!-- 学习时段热力图 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="200dp"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/monitor_stat_card_bg"
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="学习时段分布"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#8AAAC0"
+                        android:layout_marginBottom="6dp" />
+
+                    <LinearLayout
+                        android:id="@+id/dashHourlyDist"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</FrameLayout>

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="6dp"
+    app:cardBackgroundColor="@color/tech_blue_primary">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="20dp"
+        android:gravity="center_vertical">
+
+        <!-- 排名 -->
+        <LinearLayout
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/ranking_background"
+            android:padding="8dp">
+
+            <TextView
+                android:id="@+id/rankTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/tech_blue_light" />
+
+            <TextView
+                android:id="@+id/rankLabelTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="名"
+                android:textSize="12sp"
+                android:textColor="@color/tech_blue_accent" />
+
+        </LinearLayout>
+
+        <!-- 用户信息 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
+
+            <!-- 用户名和角色 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/usernameTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="用户名"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tech_blue_light"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <!-- 角色标签 -->
+                <TextView
+                    android:id="@+id/roleTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="学生"
+                    android:textSize="12sp"
+                    android:textColor="@color/tech_blue_accent"
+                    android:background="@drawable/role_background"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="2dp"
+                    android:layout_marginStart="8dp" />
+
+            </LinearLayout>
+
+            <!-- 活跃度指标 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <!-- 活跃度分数 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🏆 活跃度"
+                        android:textSize="10sp"
+                        android:textColor="@color/tech_blue_accent" />
+
+                    <TextView
+                        android:id="@+id/activityScoreTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0分"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_orange_warning"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <!-- 学习时长 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="⏱️ 学习时长"
+                        android:textSize="10sp"
+                        android:textColor="@color/tech_blue_accent" />
+
+                    <TextView
+                        android:id="@+id/studyTimeTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0分钟"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_cyan_info"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- 活跃度等级 -->
+            <TextView
+                android:id="@+id/activityLevelTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="高活跃度"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/activity_level_background"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:layout_marginTop="8dp" />
+
+        </LinearLayout>
+
+        <!-- 排名图标（前三名显示奖牌） -->
+        <TextView
+            android:id="@+id/rankIconTextView"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:text="🥇"
+            android:textSize="24sp"
+            android:gravity="center"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

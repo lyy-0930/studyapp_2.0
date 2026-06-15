@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.StudyApp" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/holo_blue_dark</item>
+        <item name="colorPrimaryDark">@color/holo_blue_dark</item>
+        <item name="colorAccent">@color/holo_blue_dark</item>
+        <item name="android:windowBackground">@color/white</item>
+    </style>
+</resources>

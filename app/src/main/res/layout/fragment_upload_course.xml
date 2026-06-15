@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:padding="16dp"
+    tools:context=".UploadCourseFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 上传区域卡片 -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/uploadCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp"
+                android:gravity="center">
+
+                <!-- 视频上传图标 -->
+                <TextView
+                    android:id="@+id/videoIcon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🎬"
+                    android:textSize="48sp"
+                    android:layout_marginBottom="24dp" />
+
+                <!-- 标题 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="课程视频上传"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginBottom="24dp" />
+
+                <!-- 课程信息表单 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <!-- 课程标题 -->
+                    <EditText
+                        android:id="@+id/courseTitleEditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="课程标题"
+                        android:inputType="text|textCapSentences"
+                        android:maxLines="1"
+                        android:background="@drawable/edit_text_background"
+                        android:padding="16dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- 课程描述 -->
+                    <EditText
+                        android:id="@+id/courseDescriptionEditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="课程描述"
+                        android:inputType="textMultiLine|textCapSentences"
+                        android:minLines="3"
+                        android:maxLines="5"
+                        android:background="@drawable/edit_text_background"
+                        android:padding="16dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- 课程分类 -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="课程分类"
+                        android:textSize="13sp"
+                        android:textColor="@color/darker_gray"
+                        android:layout_marginBottom="4dp" />
+
+                    <Spinner
+                        android:id="@+id/categorySpinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:background="@drawable/edit_text_background"
+                        android:padding="12dp"
+                        android:layout_marginBottom="16dp" />
+
+                    <!-- AI 课程封面区域 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="16dp"
+                        android:gravity="center">
+
+                        <!-- 封面提示词输入 -->
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="封面描述（可选）"
+                            android:textSize="13sp"
+                            android:textColor="@color/darker_gray"
+                            android:layout_marginBottom="4dp" />
+
+                        <EditText
+                            android:id="@+id/coverPromptEditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="输入画面描述，如：科技感的蓝色背景、大自然的绿色森林"
+                            android:inputType="text|textCapSentences"
+                            android:maxLines="2"
+                            android:background="@drawable/edit_text_background"
+                            android:padding="12dp"
+                            android:textSize="13sp"
+                            android:layout_marginBottom="8dp" />
+
+                        <!-- 封面预览 -->
+                        <ImageView
+                            android:id="@+id/courseCoverPreview"
+                            android:layout_width="match_parent"
+                            android:layout_height="200dp"
+                            android:scaleType="fitCenter"
+                            android:adjustViewBounds="true"
+                            android:visibility="gone"
+                            android:background="@drawable/edit_text_background"
+                            android:layout_marginBottom="8dp" />
+
+                        <!-- AI 生成封面按钮 -->
+                        <Button
+                            android:id="@+id/aiGenerateCoverButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="🎨 AI 生成课程封面"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:backgroundTint="#E8E8E8"
+                            android:textColor="@color/tsinghua_purple_dark"
+                            android:paddingVertical="10dp" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- 选择视频按钮 -->
+                <Button
+                    android:id="@+id/selectVideoButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="选择视频文件"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="@color/tsinghua_purple_light"
+                    android:textColor="@color/white"
+                    android:paddingVertical="14dp"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- 选中的视频信息 -->
+                <LinearLayout
+                    android:id="@+id/videoInfoContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:background="@drawable/edit_text_background"
+                    android:padding="16dp"
+                    android:layout_marginBottom="24dp">
+
+                    <TextView
+                        android:id="@+id/videoFileNameTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="未选择视频"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark" />
+
+                    <TextView
+                        android:id="@+id/videoFileSizeTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textSize="13sp"
+                        android:textColor="@color/darker_gray"
+                        android:layout_marginTop="6dp" />
+
+                </LinearLayout>
+
+                <!-- PPT 文件选择 -->
+                <Button
+                    android:id="@+id/selectPptButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="选择PPT文件（自动出题）"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="#E8E8E8"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:paddingVertical="10dp"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- 选中的PPT信息 -->
+                <LinearLayout
+                    android:id="@+id/pptInfoContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:background="@drawable/edit_text_background"
+                    android:padding="16dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:id="@+id/pptFileNameTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="未选择PPT"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark" />
+
+                    <TextView
+                        android:id="@+id/questionCountHint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:hint="选择PPT后将在上传课程时自动生成选择题"
+                        android:textSize="12sp"
+                        android:textColor="@color/darker_gray"
+                        android:layout_marginTop="4dp" />
+
+                </LinearLayout>
+
+                <!-- 上传进度条 -->
+                <LinearLayout
+                    android:id="@+id/progressContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:id="@+id/progressText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="准备上传..."
+                        android:textSize="14sp"
+                        android:textColor="@color/tsinghua_purple_dark"
+                        android:layout_marginBottom="8dp" />
+
+                    <ProgressBar
+                        android:id="@+id/uploadProgressBar"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="10dp"
+                        android:progress="0"
+                        android:max="100"
+                        android:progressTint="@color/tsinghua_purple" />
+
+                    <TextView
+                        android:id="@+id/progressPercent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0%"
+                        android:textSize="12sp"
+                        android:textColor="@color/darker_gray"
+                        android:layout_gravity="end"
+                        android:layout_marginTop="4dp" />
+
+                </LinearLayout>
+
+                <!-- 上传按钮 -->
+                <Button
+                    android:id="@+id/uploadButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="上传视频"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="@color/tsinghua_purple"
+                    android:textColor="@color/white"
+                    android:paddingVertical="14dp"
+                    android:enabled="false" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <!-- 提示卡片 -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="💡 上传提示"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="• 支持 MP4、AVI、MOV、MKV、WMV 等常见视频格式"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
+                    android:layout_marginBottom="6dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="• 单个文件大小不能超过 2GB"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
+                    android:layout_marginBottom="6dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="• 上传的视频将自动存储到云端并同步到学生端"
+                    android:textSize="14sp"
+                    android:textColor="#666666" />
+
+                <Button
+                    android:id="@+id/networkTestButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="网络诊断"
+                    android:textSize="13sp"
+                    android:backgroundTint="#E8E8E8"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginTop="16dp"
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="6dp"
+                    android:layout_gravity="center" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

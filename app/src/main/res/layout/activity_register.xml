@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@color/white"
+    tools:context=".RegisterActivity">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp">
+
+        <!-- 注册标题 -->
+        <TextView
+            android:id="@+id/titleTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/register_title"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="20dp" />
+
+        <!-- 用户名输入区域 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/usernameContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:background="@drawable/edit_text_background"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@id/titleTextView"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/userIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="👤"
+                android:textSize="18sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <EditText
+                android:id="@+id/usernameEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:hint="@string/username_hint"
+                android:inputType="text"
+                android:maxLines="1"
+                android:background="@null"
+                android:layout_marginStart="16dp"
+                app:layout_constraintStart_toEndOf="@id/userIcon"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- 密码输入区域 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/passwordContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edit_text_background"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@id/usernameContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/lockIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="🔒"
+                android:textSize="18sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <EditText
+                android:id="@+id/passwordEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:hint="@string/password_hint"
+                android:inputType="textPassword"
+                android:maxLines="1"
+                android:background="@null"
+                android:layout_marginStart="16dp"
+                app:layout_constraintStart_toEndOf="@id/lockIcon"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- 确认密码输入区域 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/confirmPasswordContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edit_text_background"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@id/passwordContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/lockIcon2"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="🔒"
+                android:textSize="18sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <EditText
+                android:id="@+id/confirmPasswordEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:hint="@string/confirm_password_hint"
+                android:inputType="textPassword"
+                android:maxLines="1"
+                android:background="@null"
+                android:layout_marginStart="16dp"
+                app:layout_constraintStart_toEndOf="@id/lockIcon2"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- 姓名输入区域 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/fullNameContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edit_text_background"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@id/confirmPasswordContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/nameIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="📝"
+                android:textSize="18sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <EditText
+                android:id="@+id/fullNameEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:hint="请输入真实姓名"
+                android:inputType="text"
+                android:maxLines="1"
+                android:background="@null"
+                android:layout_marginStart="16dp"
+                app:layout_constraintStart_toEndOf="@id/nameIcon"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- 生日输入区域 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/birthdayContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edit_text_background"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@id/fullNameContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/birthdayIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="🎂"
+                android:textSize="18sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <EditText
+                android:id="@+id/birthdayEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:hint="请选择生日"
+                android:inputType="none"
+                android:maxLines="1"
+                android:focusable="false"
+                android:background="@null"
+                android:layout_marginStart="16dp"
+                android:textSize="14sp"
+                app:layout_constraintStart_toEndOf="@id/birthdayIcon"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- 密保问题 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/securityQuestionContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edit_text_background"
+            android:padding="12dp"
+            app:layout_constraintTop_toBottomOf="@id/birthdayContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/securityQuestionText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="你的父亲的名字是什么？"
+                android:textSize="14sp"
+                android:textColor="#333333"
+                android:layout_marginEnd="8dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/refreshSecurityQuestionBtn" />
+
+            <TextView
+                android:id="@+id/refreshSecurityQuestionBtn"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:text="🔄"
+                android:textSize="18sp"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- 密保答案输入区域 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/securityAnswerContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edit_text_background"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@id/securityQuestionContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/securityAnswerIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="🔐"
+                android:textSize="18sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <EditText
+                android:id="@+id/securityAnswerEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:hint="请输入密保答案"
+                android:inputType="text"
+                android:maxLines="1"
+                android:background="@null"
+                android:layout_marginStart="16dp"
+                app:layout_constraintStart_toEndOf="@id/securityAnswerIcon"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- 管理员验证码输入区域 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/adminCodeContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edit_text_background"
+            android:padding="16dp"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/securityAnswerContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/adminCodeIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="🔑"
+                android:textSize="18sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <EditText
+                android:id="@+id/adminCodeEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:hint="请输入管理员验证码"
+                android:inputType="number"
+                android:maxLines="1"
+                android:background="@null"
+                android:layout_marginStart="16dp"
+                app:layout_constraintStart_toEndOf="@id/adminCodeIcon"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- 角色选择标签 -->
+        <TextView
+            android:id="@+id/roleLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/role_selection_label"
+            android:textSize="16sp"
+            android:textColor="@color/black"
+            android:layout_marginTop="24dp"
+            app:layout_constraintTop_toBottomOf="@id/adminCodeContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="8dp" />
+
+        <!-- 角色选择RadioGroup -->
+        <RadioGroup
+            android:id="@+id/roleRadioGroup"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp"
+            android:padding="12dp"
+            app:layout_constraintTop_toBottomOf="@id/roleLabel"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <RadioButton
+                android:id="@+id/studentRadioButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/student_role"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/teacherRadioButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/teacher_role" />
+
+            <RadioButton
+                android:id="@+id/adminRadioButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/admin_role" />
+
+        </RadioGroup>
+
+        <!-- 注册按钮 -->
+        <Button
+            android:id="@+id/registerButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="@string/register_button"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:backgroundTint="@color/holo_blue_dark"
+            android:textColor="@color/white"
+            android:paddingVertical="16dp"
+            app:layout_constraintTop_toBottomOf="@id/roleRadioGroup"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- 已有账号提示和登录链接 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="20dp"
+            app:layout_constraintTop_toBottomOf="@id/registerButton"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/already_have_account"
+                android:textSize="14sp"
+                android:textColor="@color/black" />
+
+            <TextView
+                android:id="@+id/loginLink"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/login_link"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/holo_blue_dark"
+                android:layout_marginStart="4dp"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</ScrollView>
