@@ -11,6 +11,7 @@
     "init-tables": "node init-mysql-tables.js"
   },
   "dependencies": {
+    "@alicloud/sts20150401": "^1.2.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",

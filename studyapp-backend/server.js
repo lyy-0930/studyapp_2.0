@@ -3173,9 +3173,13 @@ app.get('/admin/dashboard-overview', async (req, res) => {
 /**
  * 生成 OSS 预签名 PUT URL（服务端签名，客户端直传）
  * 客户端无需持有 AK/SK，只需向此接口请求上传凭证
+ *
+ * 安全：
+ *   - 优先使用 STS 临时凭证签名（最小权限、短有效期）
+ *   - 若 STS 未配置，降级为永久密钥签名（仍安全，密钥不离开服务端）
  * 签名算法：base64(hmac-sha1(AKSecret, "PUT\n\n${contentType}\n${expires}\n/${bucket}/${objectKey}"))
  */
-app.post('/api/oss/presigned-upload', authenticate, (req, res) => {
+app.post('/api/oss/presigned-upload', authenticate, async (req, res) => {
     try {
         const { fileName, contentType } = req.body;
         const teacherName = req.user.username;
@@ -3184,18 +3188,10 @@ app.post('/api/oss/presigned-upload', authenticate, (req, res) => {
             return errorResponse(res, '缺少 fileName 参数');
         }
 
-        // 从环境变量读取 OSS 配置（服务端持有，不暴露给客户端）
-        const accessKeyId = process.env.OSS_ACCESS_KEY_ID;
-        const accessKeySecret = process.env.OSS_ACCESS_KEY_SECRET;
         const bucketName = process.env.OSS_BUCKET_NAME || 'study-app-android-2026';
         const region = process.env.OSS_REGION || 'oss-cn-hangzhou';
 
-        if (!accessKeyId || !accessKeySecret) {
-            console.error('❌ OSS 未配置：请设置 OSS_ACCESS_KEY_ID 和 OSS_ACCESS_KEY_SECRET 环境变量');
-            return errorResponse(res, '服务器 OSS 未配置', 503);
-        }
-
-        // 生成对象存储路径（与 OSSConfig.generateVideoPath 保持一致）
+        // 生成对象存储路径
         const timestamp = Date.now();
         const safeFileName = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
         const safeTeacherName = teacherName
@@ -3204,28 +3200,72 @@ app.post('/api/oss/presigned-upload', authenticate, (req, res) => {
         const teacherPrefix = safeTeacherName ? `${safeTeacherName}_` : '';
         const objectKey = `studyapp/videos/${timestamp}_${teacherPrefix}${safeFileName}`;
 
-        // 签名有效期（秒）
-        const expires = Math.floor(Date.now() / 1000) + 3600; // 1 小时有效
-
-        // 构造待签名字符串（Alibaba Cloud OSS 签名格式 v1）
+        const host = `${bucketName}.${region}.aliyuncs.com`;
         const resource = `/${bucketName}/${objectKey}`;
-        const stringToSign = `PUT\n\n${contentType || ''}\n${expires}\n${resource}`;
+        const expires = Math.floor(Date.now() / 1000) + 3600;
 
-        // 使用 HMAC-SHA1 签名
+        // ========== 获取签名用的密钥（优先 STS 临时凭证） ==========
+        let signAccessKeyId = process.env.OSS_ACCESS_KEY_ID;
+        let signAccessKeySecret = process.env.OSS_ACCESS_KEY_SECRET;
+        let securityToken = null;
+
+        if (!signAccessKeyId || !signAccessKeySecret) {
+            return errorResponse(res, '服务器 OSS 未配置', 503);
+        }
+
+        // 如果配了 STS RoleARN，则通过 STS 获取临时凭证
+        const roleArn = process.env.OSS_STS_ROLE_ARN;
+        if (roleArn) {
+            try {
+                const StsClient = require('@alicloud/sts20150401').default;
+                const stsClient = new StsClient({
+                    accessKeyId: signAccessKeyId,
+                    accessKeySecret: signAccessKeySecret,
+                    endpoint: `sts.${region}.aliyuncs.com`
+                });
+
+                const stsResult = await stsClient.assumeRole({
+                    RoleArn: roleArn,
+                    RoleSessionName: `studyapp_upload_${timestamp}`,
+                    DurationSeconds: 900, // 15 分钟
+                    Policy: JSON.stringify({
+                        Version: '1',
+                        Statement: [{
+                            Effect: 'Allow',
+                            Action: ['oss:PutObject'],
+                            Resource: [`acs:oss:*:*:${bucketName}/${objectKey}`]
+                        }]
+                    })
+                });
+
+                if (stsResult?.body?.credentials) {
+                    signAccessKeyId = stsResult.body.credentials.accessKeyId;
+                    signAccessKeySecret = stsResult.body.credentials.accessKeySecret;
+                    securityToken = stsResult.body.credentials.securityToken;
+                    console.log(`✅ STS 临时凭证获取成功，有效期 15 分钟`);
+                }
+            } catch (stsError) {
+                console.warn('⚠️ STS 获取失败，降级为永久密钥签名:', stsError.message);
+            }
+        }
+
+        // ========== 构造并签名 ==========
+        const stringToSign = `PUT\n\n${contentType || ''}\n${expires}\n${resource}`;
         const signature = crypto
-            .createHmac('sha1', accessKeySecret)
+            .createHmac('sha1', signAccessKeySecret)
             .update(stringToSign, 'utf8')
             .digest('base64');
 
-        // 构建预签名 URL
-        const host = `${bucketName}.${region}.aliyuncs.com`;
+        // 构建预签名 URL（STS 需要额外 security-token 参数）
         const encodedSignature = encodeURIComponent(signature);
-        const uploadUrl = `https://${host}/${objectKey}?OSSAccessKeyId=${accessKeyId}&Expires=${expires}&Signature=${encodedSignature}`;
+        let uploadUrl = `https://${host}/${objectKey}?OSSAccessKeyId=${signAccessKeyId}&Expires=${expires}&Signature=${encodedSignature}`;
+        if (securityToken) {
+            uploadUrl += `&security-token=${encodeURIComponent(securityToken)}`;
+        }
 
-        // 构建公开访问 URL
         const publicUrl = `https://${host}/${objectKey}`;
 
-        console.log(`✅ 生成 OSS 预签名 URL: ${objectKey} (有效期 1 小时)`);
+        console.log(`✅ 生成 OSS 预签名 URL: ${objectKey} (STS: ${!!securityToken})`);
 
         successResponse(res, {
             uploadUrl,
@@ -3233,7 +3273,8 @@ app.post('/api/oss/presigned-upload', authenticate, (req, res) => {
             objectKey,
             expires,
             bucket: bucketName,
-            region
+            region,
+            sts: !!securityToken
         }, '获取上传地址成功');
     } catch (error) {
         console.error('❌ 生成 OSS 预签名 URL 失败:', error);
