@@ -632,10 +632,19 @@ app.post('/upload/video', authenticate, uploadVideo.single('video'), async (req,
 // 4.5B2 本地视频上传（原始流模式，不经过 multipart）
 // 路径：POST /upload/video/raw
 // 功能：接受原始文件流 + X-Filename 头，适用于 Android HttpURLConnection
-// 注意：本地开发阶段暂不校验 JWT 令牌，方便测试。部署到公网时需加回 authenticate
-app.post('/upload/video/raw', (req, res) => {
+// 安全：需 JWT 认证 + 仅允许视频扩展名
+const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.m4v', '.webm', '.3gp'];
+app.post('/upload/video/raw', authenticate, (req, res) => {
     try {
         const fileName = req.headers['x-filename'] || `upload_${Date.now()}.mp4`;
+        const ext = path.extname(fileName).toLowerCase();
+
+        // 校验扩展名（防止上传脚本文件）
+        if (!ALLOWED_VIDEO_EXTENSIONS.includes(ext)) {
+            console.warn(`⚠️  拒绝上传非视频文件: ${fileName} (${ext})`);
+            return errorResponse(res, `不支持的文件格式: ${ext}，仅允许视频文件`);
+        }
+
         const safeName = fileName.replace(/[^a-zA-Z0-9一-鿿._-]/g, '_').substring(0, 100);
         const timestamp = Date.now();
         const storedName = `${timestamp}_${safeName}`;
@@ -653,6 +662,13 @@ app.post('/upload/video/raw', (req, res) => {
         writeStream.on('error', (err) => {
             console.error('❌ 视频写入错误:', err);
             errorResponse(res, '视频保存失败', 500);
+        });
+
+        // 流错误处理（客户端断开等）
+        req.on('error', (err) => {
+            console.error('❌ 上传流错误:', err.message);
+            // 清理已写入的部分文件
+            try { fs.unlinkSync(filePath); } catch (_) {}
         });
     } catch (error) {
         console.error('❌ 视频上传错误:', error);
