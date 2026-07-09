@@ -2931,11 +2931,13 @@ app.get('/admin/course-mastery-stats', async (req, res) => {
                 c.credit,
                 c.created_at,
                 COUNT(DISTINCT ce.student_id) as total_students,
+                COUNT(DISTINCT sr.student_id) as studying_students,
                 COUNT(DISTINCT sr.id) as total_learning_records,
                 COALESCE(AVG(sr.progress), 0) as average_progress,
                 COALESCE(AVG(sr.click_count), 0) as average_click_count,
                 COUNT(DISTINCT CASE WHEN sr.progress >= 80 THEN sr.id ELSE NULL END) as completed_records_count,
-                COALESCE(AVG(qa.score * 100.0 / NULLIF(qa.total_questions, 0)), 0) as average_quiz_accuracy
+                COUNT(DISTINCT qa.student_id) as quiz_takers,
+                COALESCE(AVG(qa.score), 0) as average_quiz_accuracy
             FROM courses c
             LEFT JOIN course_enrollments ce ON c.id = ce.course_id
             LEFT JOIN study_records sr ON c.id = sr.course_id
@@ -2963,28 +2965,32 @@ app.get('/admin/course-mastery-stats', async (req, res) => {
             averageCompletionRate = (totalCompletedRecords / totalLearningRecords) * 100;
         }
 
-        // 计算掌握度分布
+        // 计算掌握度分布（基于综合掌握度）
         const masteryDistribution = {
-            proficient: 0,    // 精通（>=90%）
-            good: 0,         // 良好（70-89%）
-            medium: 0,       // 中等（50-69%）
-            basic: 0,        // 基础（30-49%）
-            beginner: 0      // 入门（<30%）
+            proficient: 0,    // 优秀（>=85）
+            good: 0,         // 良好（70-84）
+            medium: 0,       // 中等（50-69）
+            basic: 0,        // 基础（30-49）
+            beginner: 0      // 未开始（<30）
         };
 
         for (const stat of courseStats) {
             const progress = parseFloat(stat.average_progress) || 0;
-            if (progress >= 90) {
-                masteryDistribution.proficient++;
-            } else if (progress >= 70) {
-                masteryDistribution.good++;
-            } else if (progress >= 50) {
-                masteryDistribution.medium++;
-            } else if (progress >= 30) {
-                masteryDistribution.basic++;
-            } else {
-                masteryDistribution.beginner++;
-            }
+            const quizAccuracy = parseFloat(stat.average_quiz_accuracy) || 0;
+            const totalStudents = parseInt(stat.total_students) || 0;
+            const studyingStudents = parseInt(stat.studying_students || 0);
+            const participationRate = totalStudents > 0 ? studyingStudents / totalStudents : 0;
+            const avgClicks = parseFloat(stat.average_click_count) || 0;
+            const depthScore = Math.min(avgClicks / 20, 1) * 100;
+            const quizAdjustedAccuracy = quizAccuracy * (totalStudents > 0 ? Math.min(parseInt(stat.quiz_takers || 0) / totalStudents, 1) : 0);
+            const mastery = Math.round(
+                progress * 0.25 + quizAdjustedAccuracy * 0.25 + participationRate * 100 * 0.30 + depthScore * 0.20
+            );
+            if (mastery >= 85) masteryDistribution.proficient++;
+            else if (mastery >= 70) masteryDistribution.good++;
+            else if (mastery >= 50) masteryDistribution.medium++;
+            else if (mastery >= 30) masteryDistribution.basic++;
+            else masteryDistribution.beginner++;
         }
 
         successResponse(res, {
@@ -3002,24 +3008,46 @@ app.get('/admin/course-mastery-stats', async (req, res) => {
                 const progress = parseFloat(stat.average_progress) || 0;
                 const quizAccuracy = parseFloat(stat.average_quiz_accuracy) || 0;
 
-                // ═══════════════════════════════════════
-                // 课程掌握度 = 视频完成率 × 40% + 测试成绩 × 60%
-                // ═══════════════════════════════════════
-                const compositeMastery = progress * 0.4 + quizAccuracy * 0.6;
+                // ═══════════════════════════════════════════════════════════════
+                // 课程掌握度（新版 v2.0）：
+                //   掌握度 = 平均进度 × 25%
+                //          + 答题正确率 × 答题人数占比 × 25%
+                //          + 学生参与率（学习人数/选课人数）× 30%
+                //          + 学习深度（平均点击次数归一化）× 20%
+                //
+                // 关键改进：参与率权重最大，反映"多少人真的在学"
+                // ═══════════════════════════════════════════════════════════════
+                const totalStudents = parseInt(stat.total_students) || 0;
+                const studyingStudents = parseInt(stat.total_learning_records > 0 ? stat.studying_students : 0) || 0;
+                const participationRate = totalStudents > 0 ? studyingStudents / totalStudents : 0;
+                const avgClicks = parseFloat(stat.average_click_count) || 0;
+                const depthScore = Math.min(avgClicks / 20, 1) * 100; // 每分钟点击20次算满分
 
-                // 确定掌握度等级（基于综合掌握度）
+                // 答题正确率 × 答题人数占比（答题人越多越可信）
+                const quizAdjustedAccuracy = quizAccuracy * (totalStudents > 0 ? Math.min((stat.quiz_takers || 0) / totalStudents, 1) : 0);
+
+                const compositeMastery = Math.round(
+                    progress * 0.25 +
+                    quizAdjustedAccuracy * 0.25 +
+                    participationRate * 100 * 0.30 +
+                    depthScore * 0.20
+                );
+
+                // 确定掌握度等级
                 let masteryLevel;
-                if (compositeMastery >= 90) {
-                    masteryLevel = "精通";
+                if (compositeMastery >= 85) {
+                    masteryLevel = "🏆 优秀";
                 } else if (compositeMastery >= 70) {
-                    masteryLevel = "良好";
+                    masteryLevel = "✅ 良好";
                 } else if (compositeMastery >= 50) {
-                    masteryLevel = "中等";
+                    masteryLevel = "📋 中等";
                 } else if (compositeMastery >= 30) {
-                    masteryLevel = "基础";
+                    masteryLevel = "📚 基础";
                 } else {
-                    masteryLevel = "入门";
+                    masteryLevel = "🌀 未开始";
                 }
+
+                const participationRateNum = totalStudents > 0 ? (studyingStudents / totalStudents) : 0;
 
                 return {
                     rank: index + 1,
@@ -3030,14 +3058,18 @@ app.get('/admin/course-mastery-stats', async (req, res) => {
                     credit: stat.credit,
                     created_at: stat.created_at,
                     total_students: parseInt(stat.total_students),
+                    studying_students: studyingStudents,
                     total_learning_records: parseInt(stat.total_learning_records),
                     average_progress: parseFloat(progress.toFixed(1)),
                     average_click_count: parseFloat((parseFloat(stat.average_click_count) || 0).toFixed(1)),
                     average_quiz_accuracy: parseFloat(quizAccuracy.toFixed(1)),
-                    average_completion_rate: stat.total_learning_records > 0 ?
-                        parseFloat(((parseInt(stat.completed_records_count || 0) / parseInt(stat.total_learning_records)) * 100).toFixed(1)) : 0,
-                    composite_mastery: parseFloat(compositeMastery.toFixed(1)),
-                    mastery_level: masteryLevel
+                    quiz_takers: parseInt(stat.quiz_takers || 0),
+                    participation_rate: parseFloat((participationRateNum * 100).toFixed(1)),
+                    depth_score: parseFloat(depthScore.toFixed(1)),
+                    composite_mastery: compositeMastery,
+                    mastery_level: masteryLevel,
+                    // 兼容旧字段
+                    average_completion_rate: 0
                 };
             })
         }, '获取课程掌握度统计成功');

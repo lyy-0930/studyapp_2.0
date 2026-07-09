@@ -245,13 +245,19 @@ class ApiService private constructor(val context: Context) {
         val credit: Int,
         val createdAt: String,
         val totalStudents: Int,
+        val studyingStudents: Int = 0,
         val totalLearningRecords: Int,
         val averageProgress: Double,
         val averageClickCount: Double,
         val averageQuizAccuracy: Double,
-        val averageCompletionRate: Double,
-        val masteryLevel: String? = "",
-        val compositeMastery: Double? = null
+        val quizTakers: Int = 0,
+        val participationRate: Double = 0.0,
+        val depthScore: Double = 0.0,
+        val compositeMastery: Int = 0,
+        val mastery_level: String? = "",
+        // 旧字段，保持兼容
+        val averageCompletionRate: Double = 0.0,
+        val masteryLevel: String? = ""
     )
 
     /**
@@ -1610,13 +1616,18 @@ class ApiService private constructor(val context: Context) {
                                     credit = c.optInt("credit", 0),
                                     createdAt = c.optString("created_at", ""),
                                     totalStudents = c.getInt("total_students"),
+                                    studyingStudents = c.optInt("studying_students", 0),
                                     totalLearningRecords = c.getInt("total_learning_records"),
                                     averageProgress = c.optDouble("average_progress", 0.0),
                                     averageClickCount = c.optDouble("average_click_count", 0.0),
                                     averageQuizAccuracy = c.optDouble("average_quiz_accuracy", 0.0),
+                                    quizTakers = c.optInt("quiz_takers", 0),
+                                    participationRate = c.optDouble("participation_rate", 0.0),
+                                    depthScore = c.optDouble("depth_score", 0.0),
+                                    compositeMastery = c.optInt("composite_mastery", 0),
+                                    mastery_level = c.optString("mastery_level", ""),
                                     averageCompletionRate = c.optDouble("average_completion_rate", 0.0),
-                                    masteryLevel = c.optString("mastery_level", ""),
-                                    compositeMastery = if (c.has("composite_mastery") && !c.isNull("composite_mastery")) c.getDouble("composite_mastery") else null
+                                    masteryLevel = c.optString("mastery_level", "")
                                 ))
                             }
                         }
