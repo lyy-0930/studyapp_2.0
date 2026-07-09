@@ -3,7 +3,6 @@ package com.studyapp.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -54,10 +53,10 @@ class TeacherCourseAdapter(
         private val courseDate: TextView = itemView.findViewById(R.id.teacherCourseDate)
         private val coverImage: ImageView = itemView.findViewById(R.id.teacherCourseCoverImage)
         private val iconText: TextView = itemView.findViewById(R.id.teacherCourseIconText)
-        private val playBtn: Button = itemView.findViewById(R.id.playVideoBtn)
-        private val manageBtn: Button = itemView.findViewById(R.id.manageQuestionsBtn)
-        private val uploadBtn: Button = itemView.findViewById(R.id.uploadMaterialBtn)
-        private val deleteBtn: Button = itemView.findViewById(R.id.deleteCourseBtn)
+        private val playBtn: View = itemView.findViewById(R.id.playVideoBtn)
+        private val manageBtn: View = itemView.findViewById(R.id.manageQuestionsBtn)
+        private val uploadBtn: View = itemView.findViewById(R.id.uploadMaterialBtn)
+        private val deleteBtn: View = itemView.findViewById(R.id.deleteCourseBtn)
 
         fun bind(course: ApiCourse, position: Int) {
             courseName.text = course.name
