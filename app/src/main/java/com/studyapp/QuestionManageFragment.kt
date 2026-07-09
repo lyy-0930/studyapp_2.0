@@ -29,6 +29,7 @@ class QuestionManageFragment : Fragment() {
     // Views
     private lateinit var titleText: TextView
     private lateinit var backBtn: TextView
+    private lateinit var pptUploadBtn: TextView
     private lateinit var aiGenerateBtn: TextView
     private lateinit var manualAddBtn: TextView
     private lateinit var filterAllBtn: TextView
@@ -75,6 +76,7 @@ class QuestionManageFragment : Fragment() {
     private fun initViews(view: View) {
         titleText = view.findViewById(R.id.questionManageTitle)
         backBtn = view.findViewById(R.id.questionManageBackBtn)
+        pptUploadBtn = view.findViewById(R.id.pptUploadBtn)
         aiGenerateBtn = view.findViewById(R.id.aiGenerateBtn)
         manualAddBtn = view.findViewById(R.id.manualAddBtn)
         filterAllBtn = view.findViewById(R.id.filterAllBtn)
@@ -93,6 +95,10 @@ class QuestionManageFragment : Fragment() {
                 val activity = requireActivity() as? TeacherActivity
                 activity?.showPanel(4) // 返回我的课程
             } catch (_: Exception) { }
+        }
+
+        pptUploadBtn.setOnClickListener {
+            pickPptFile()
         }
 
         aiGenerateBtn.setOnClickListener {
@@ -219,6 +225,63 @@ class QuestionManageFragment : Fragment() {
         }
 
         return card
+    }
+
+    // ==================== PPT上传 + 解析 ====================
+
+    private val pptPickerLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            uploadAndParsePpt(uri)
+        }
+    }
+
+    private fun pickPptFile() {
+        Toast.makeText(requireContext(), "请选择PPT文件", Toast.LENGTH_SHORT).show()
+        pptPickerLauncher.launch("application/vnd.openxmlformats-officedocument.presentationml.presentation")
+    }
+
+    private fun uploadAndParsePpt(uri: android.net.Uri) {
+        loadingText.text = "正在解析PPT..."
+        loadingText.visibility = View.VISIBLE
+
+        scope.launch {
+            try {
+                // 使用 PPTXParser 提取幻灯片文本
+                val slideTexts = withContext(Dispatchers.IO) {
+                    val inputStream = requireContext().contentResolver.openInputStream(uri)
+                        ?: throw Exception("无法读取文件")
+                    val result = PPTXParser.parse(inputStream)
+                    inputStream.close()
+                    result
+                }
+
+                if (slideTexts.isEmpty()) {
+                    Toast.makeText(requireContext(), "未能从PPT中提取到文本内容", Toast.LENGTH_LONG).show()
+                    loadingText.visibility = View.GONE
+                    return@launch
+                }
+
+                // 保存幻灯片文本到后端
+                loadingText.text = "正在保存幻灯片文本（${slideTexts.size}页）..."
+                val saveResult = withContext(Dispatchers.IO) {
+                    apiService.saveSlideTexts(courseId, slideTexts)
+                }
+
+                loadingText.visibility = View.GONE
+
+                if (saveResult.isSuccess) {
+                    Toast.makeText(requireContext(), "PPT解析成功！提取了${slideTexts.size}页文本，点击AI出题按钮生成题目", Toast.LENGTH_LONG).show()
+                } else {
+                    val err = saveResult.exceptionOrNull()?.message ?: "保存失败"
+                    Toast.makeText(requireContext(), "保存幻灯片文本失败: $err", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                loadingText.visibility = View.GONE
+                Toast.makeText(requireContext(), "PPT解析失败: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun showAIGenerateConfirm() {

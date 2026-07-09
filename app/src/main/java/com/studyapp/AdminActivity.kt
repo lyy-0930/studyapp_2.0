@@ -596,11 +596,12 @@ class AdminActivity : AppCompatActivity() {
             .setPositiveButton("删除") { _, _ ->
                 coroutineScope.launch {
                     val result = withContext(Dispatchers.IO) { apiService.deleteCategory(category.id) }
-                    if (result.isSuccess) {
+                    if (result.isSuccess && result.getOrNull() == true) {
                         loadCategoriesForAdmin()
                         Toast.makeText(this@AdminActivity, "分类已删除", Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(this@AdminActivity, "删除失败", Toast.LENGTH_SHORT).show()
+                        val errMsg = result.exceptionOrNull()?.message ?: "没有权限或分类不存在"
+                        Toast.makeText(this@AdminActivity, "删除失败: $errMsg", Toast.LENGTH_LONG).show()
                     }
                 }
             }

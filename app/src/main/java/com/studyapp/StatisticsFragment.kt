@@ -254,7 +254,6 @@ class StatisticsFragment : Fragment() {
         val progressSummaryText: TextView = dialogView.findViewById(R.id.progressSummaryText)
         val accuracyBarChart: com.github.mikephil.charting.charts.BarChart = dialogView.findViewById(R.id.accuracyBarChart)
         val accuracyChartEmpty: TextView = dialogView.findViewById(R.id.accuracyChartEmpty)
-        val accuracyChartCard: android.widget.LinearLayout = dialogView.findViewById(R.id.accuracyChartCard)
 
         courseNameText.text = courseStatistic.courseName
 
