@@ -92,23 +92,18 @@ class StatisticsFragment : Fragment() {
 
     private suspend fun fetchTeacherStatsFromApi(teacherName: String): TeacherStatsResponse? {
         return try {
-            val url = URL("${ApiService.BASE_URL}/teacher/stats?username=${java.net.URLEncoder.encode(teacherName, "UTF-8")}")
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "GET"
-            conn.connectTimeout = 15000
-            conn.readTimeout = 15000
-            try {
-                val responseCode = conn.responseCode
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val body = conn.inputStream.bufferedReader().readText()
-                    parseTeacherStatsResponse(body)
-                } else null
-            } finally {
-                conn.disconnect()
+            val result = ApiService.getInstance(requireContext()).getTeacherStats()
+            if (result.isSuccess) {
+                result.getOrThrow()
+            } else {
+                val errMsg = result.exceptionOrNull()?.message ?: "获取失败"
+                Log.w("TeacherStatsAPI", "获取失败: $errMsg")
+                TeacherStatsResponse(success = false, message = errMsg, data = null)
             }
         } catch (e: Exception) {
-            Log.e("TeacherStatsAPI", "获取教师统计数据异常: ${e.message}", e)
-            null
+            val errMsg = "${e.message}"
+            Log.e("TeacherStatsAPI", "请求异常: $errMsg", e)
+            TeacherStatsResponse(success = false, message = errMsg, data = null)
         }
     }
 
@@ -255,6 +250,11 @@ class StatisticsFragment : Fragment() {
         val accuracyLoading: TextView = dialogView.findViewById(R.id.accuracyLoadingText)
         val studentsContainer: LinearLayout = dialogView.findViewById(R.id.studentsListContainer)
         val accuracyContainer: LinearLayout = dialogView.findViewById(R.id.accuracyListContainer)
+        val progressPieChart: com.github.mikephil.charting.charts.PieChart = dialogView.findViewById(R.id.progressPieChart)
+        val progressSummaryText: TextView = dialogView.findViewById(R.id.progressSummaryText)
+        val accuracyBarChart: com.github.mikephil.charting.charts.BarChart = dialogView.findViewById(R.id.accuracyBarChart)
+        val accuracyChartEmpty: TextView = dialogView.findViewById(R.id.accuracyChartEmpty)
+        val accuracyChartCard: android.widget.LinearLayout = dialogView.findViewById(R.id.accuracyChartCard)
 
         courseNameText.text = courseStatistic.courseName
 
@@ -296,8 +296,51 @@ class StatisticsFragment : Fragment() {
                     api.getCourseStudentStats(courseStatistic.id)
                 }
                 studentsLoading.visibility = View.GONE
-                result.onSuccess { data ->
-                    if (data.students.isEmpty()) {
+                result.onSuccess { studentData ->
+                    // 绘制环形图：学习进度分布
+                    val completed = studentData.students.count { it.averageProgress >= 80 }
+                    val inProgress = studentData.students.count { it.averageProgress >= 20 && it.averageProgress < 80 }
+                    val justStarted = studentData.students.count { it.averageProgress < 20 }
+
+                    val pieEntries = mutableListOf<com.github.mikephil.charting.data.PieEntry>()
+                    if (completed > 0) pieEntries.add(com.github.mikephil.charting.data.PieEntry(completed.toFloat(), "已完成 ≥80%"))
+                    if (inProgress > 0) pieEntries.add(com.github.mikephil.charting.data.PieEntry(inProgress.toFloat(), "进行中 20-80%"))
+                    if (justStarted > 0) pieEntries.add(com.github.mikephil.charting.data.PieEntry(justStarted.toFloat(), "刚开始 <20%"))
+
+                    if (pieEntries.isNotEmpty()) {
+                        val pieDataSet = com.github.mikephil.charting.data.PieDataSet(pieEntries, "").apply {
+                            colors = listOf(
+                                requireContext().getColor(android.R.color.holo_green_dark),
+                                requireContext().getColor(android.R.color.holo_orange_dark),
+                                requireContext().getColor(android.R.color.holo_red_dark)
+                            )
+                            valueTextSize = 12f
+                            valueTextColor = android.graphics.Color.WHITE
+                            sliceSpace = 2f
+                            selectionShift = 0f
+                        }
+                        val pieDataObj = com.github.mikephil.charting.data.PieData(pieDataSet)
+                        progressPieChart.apply {
+                            this@apply.data = pieDataObj
+                            description = null
+                            isDrawHoleEnabled = true
+                            holeRadius = 50f
+                            setHoleColor(android.graphics.Color.TRANSPARENT)
+                            setCenterText("${studentData.students.size}人")
+                            setCenterTextSize(14f)
+                            setCenterTextColor(requireContext().getColor(R.color.tsinghua_purple_dark))
+                            legend.isEnabled = true
+                            legend.textSize = 11f
+                            isRotationEnabled = false
+                            invalidate()
+                        }
+                        progressSummaryText.text = "✅ ${completed}人完成  📖 ${inProgress}人在学  🆕 ${justStarted}人刚开始"
+                    } else {
+                        progressPieChart.visibility = android.view.View.GONE
+                        progressSummaryText.text = "暂无学习数据"
+                    }
+
+                    if (studentData.students.isEmpty()) {
                         studentsContainer.addView(TextView(requireContext()).apply {
                             text = "暂无学生学习记录"
                             textSize = 14f
@@ -308,7 +351,7 @@ class StatisticsFragment : Fragment() {
                     } else {
                         // 表头
                         studentsContainer.addView(createStudentStatsHeader())
-                        for (stu in data.students) {
+                        for (stu in studentData.students) {
                             studentsContainer.addView(createStudentStatsRow(stu))
                         }
                     }
@@ -336,8 +379,50 @@ class StatisticsFragment : Fragment() {
                     api.getCourseQuestionAccuracy(courseStatistic.id)
                 }
                 accuracyLoading.visibility = View.GONE
-                result.onSuccess { data ->
-                    if (data.questions.isEmpty()) {
+                result.onSuccess { accuracyData ->
+                    // 绘制柱状图：答题正确率
+                    if (accuracyData.questions.isNotEmpty()) {
+                        accuracyChartEmpty.visibility = android.view.View.GONE
+                        accuracyBarChart.visibility = android.view.View.VISIBLE
+                        val labels = accuracyData.questions.mapIndexed { i, _ -> "题${i + 1}" }
+                        val entries = accuracyData.questions.mapIndexed { i, q ->
+                            com.github.mikephil.charting.data.BarEntry(i.toFloat(), q.accuracy.toFloat())
+                        }
+                        val barDataSet = com.github.mikephil.charting.data.BarDataSet(entries, "正确率(%)").apply {
+                            colors = entries.map {
+                                if (it.y >= 80f) requireContext().getColor(android.R.color.holo_green_dark)
+                                else if (it.y >= 50f) requireContext().getColor(android.R.color.holo_orange_dark)
+                                else requireContext().getColor(android.R.color.holo_red_dark)
+                            }
+                            valueTextSize = 10f
+                            setDrawValues(true)
+                        }
+                        accuracyBarChart.apply {
+                            val chartData = com.github.mikephil.charting.data.BarData(barDataSet)
+                            this@apply.data = chartData
+                            description = null
+                            setFitBars(true)
+                            axisLeft.apply {
+                                axisMinimum = 0f
+                                axisMaximum = 100f
+                                textSize = 10f
+                            }
+                            axisRight.isEnabled = false
+                            xAxis.apply {
+                                valueFormatter = object : com.github.mikephil.charting.formatter.IndexAxisValueFormatter(labels) {}
+                                textSize = 10f
+                                granularity = 1f
+                                position = com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM
+                            }
+                            legend.isEnabled = false
+                            invalidate()
+                        }
+                    } else {
+                        accuracyBarChart.visibility = android.view.View.GONE
+                        accuracyChartEmpty.visibility = android.view.View.VISIBLE
+                    }
+
+                    if (accuracyData.questions.isEmpty()) {
                         accuracyContainer.addView(TextView(requireContext()).apply {
                             text = "该课程暂无题目"
                             textSize = 14f
@@ -347,14 +432,14 @@ class StatisticsFragment : Fragment() {
                         })
                     } else {
                         // 总体正确率
-                        val avgAccuracy = data.questions
+                        val avgAccuracy = accuracyData.questions
                             .filter { it.answeredCount > 0 }
                             .map { it.accuracy }
                             .average()
-                        accuracyContainer.addView(createAccuracySummaryView(data.totalQuestions, data.totalAttempts, avgAccuracy))
+                        accuracyContainer.addView(createAccuracySummaryView(accuracyData.totalQuestions, accuracyData.totalAttempts, avgAccuracy))
                         // 表头
                         accuracyContainer.addView(createAccuracyHeader())
-                        for (q in data.questions) {
+                        for (q in accuracyData.questions) {
                             accuracyContainer.addView(createAccuracyRow(q))
                         }
                     }

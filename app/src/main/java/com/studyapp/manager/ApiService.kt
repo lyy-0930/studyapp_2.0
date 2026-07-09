@@ -20,6 +20,9 @@ import com.studyapp.model.StudentStatsResponse
 import com.studyapp.model.CourseCreateResponse
 import com.studyapp.model.EnrollCourseResponse
 import com.studyapp.model.StudyRecordResponse
+import com.studyapp.model.TeacherStatsResponse
+import com.studyapp.model.TeacherStatsData
+import com.studyapp.model.TeacherCourseStats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -432,7 +435,48 @@ class ApiService private constructor(val context: Context) {
     }
 
     /**
-     * 发送HTTP GET请求（自动携带令牌）
+     * 尝试刷新 JWT 令牌
+     * @return true 如果刷新成功
+     */
+    private fun tryRefreshToken(): Boolean {
+        try {
+            val refreshToken = getRefreshToken(context) ?: return false
+            val url = URL("$BASE_URL/auth/refresh")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            try {
+                val body = """{"refresh_token":"$refreshToken"}"""
+                conn.outputStream.write(body.toByteArray(Charsets.UTF_8))
+                conn.outputStream.flush()
+                if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                    val response = conn.inputStream.bufferedReader().readText()
+                    val json = JSONObject(response)
+                    val data = json.optJSONObject("data")
+                    if (data != null) {
+                        val newAccess = data.optString("access_token", "")
+                        val newRefresh = data.optString("refresh_token", "")
+                        if (newAccess.isNotEmpty() && newRefresh.isNotEmpty()) {
+                            saveTokens(context, newAccess, newRefresh)
+                            Log.d(TAG, "令牌刷新成功")
+                            return true
+                        }
+                    }
+                }
+            } finally {
+                conn.disconnect()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "令牌刷新失败: ${e.message}")
+        }
+        return false
+    }
+
+    /**
+     * 发送HTTP GET请求（自动携带令牌，401时自动刷新重试）
      */
     private fun httpGet(fullUrl: String): String {
         val url = URL(fullUrl)
@@ -446,6 +490,19 @@ class ApiService private constructor(val context: Context) {
             if (code == HttpURLConnection.HTTP_OK) {
                 return conn.inputStream.bufferedReader().readText()
             }
+            // 401 且刷新成功 → 重试一次
+            if (code == 401 && tryRefreshToken()) {
+                val conn2 = url.openConnection() as HttpURLConnection
+                conn2.requestMethod = "GET"
+                conn2.connectTimeout = 15000
+                conn2.readTimeout = 15000
+                addAuthHeader(conn2, context)
+                try {
+                    if (conn2.responseCode == HttpURLConnection.HTTP_OK) {
+                        return conn2.inputStream.bufferedReader().readText()
+                    }
+                } finally { conn2.disconnect() }
+            }
             throw IOException("HTTP $code")
         } finally {
             conn.disconnect()
@@ -453,7 +510,15 @@ class ApiService private constructor(val context: Context) {
     }
 
     /**
-     * 发送HTTP POST请求（自动携带令牌）
+     * HTTP请求重试帮助：401时刷新token后重试一次
+     * @return 是否应该重试请求（即已成功刷新token）
+     */
+    private fun shouldRetryOn401(code: Int): Boolean {
+        return code == 401 && tryRefreshToken()
+    }
+
+    /**
+     * 发送HTTP POST请求（自动携带令牌，401时自动刷新重试）
      */
     private fun httpPost(fullUrl: String, jsonBody: String): String {
         val url = URL(fullUrl)
@@ -470,10 +535,24 @@ class ApiService private constructor(val context: Context) {
             if (code == HttpURLConnection.HTTP_OK || code == HttpURLConnection.HTTP_CREATED) {
                 return conn.inputStream.bufferedReader().readText()
             }
-            // 读取错误响应体，获取服务器返回的具体错误信息
-            val errorBody = try {
-                conn.errorStream?.bufferedReader()?.readText() ?: ""
-            } catch (e: Exception) { "" }
+            val errorBody = try { conn.errorStream?.bufferedReader()?.readText() ?: "" } catch (e: Exception) { "" }
+            // 401 且刷新成功 → 重试一次
+            if (code == 401 && tryRefreshToken()) {
+                val conn2 = url.openConnection() as HttpURLConnection
+                conn2.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn2.requestMethod = "POST"; conn2.doOutput = true
+                conn2.connectTimeout = 15000; conn2.readTimeout = 15000
+                addAuthHeader(conn2, context)
+                try {
+                    conn2.outputStream.write(jsonBody.toByteArray(Charsets.UTF_8))
+                    val code2 = conn2.responseCode
+                    if (code2 == HttpURLConnection.HTTP_OK || code2 == HttpURLConnection.HTTP_CREATED) {
+                        return conn2.inputStream.bufferedReader().readText()
+                    }
+                    val err2 = try { conn2.errorStream?.bufferedReader()?.readText() ?: "" } catch (_: Exception) { "" }
+                    throw IOException("HTTP $code2: $err2")
+                } finally { conn2.disconnect() }
+            }
             throw IOException("HTTP $code: $errorBody")
         } finally {
             conn.disconnect()
@@ -481,7 +560,7 @@ class ApiService private constructor(val context: Context) {
     }
 
     /**
-     * 发送HTTP PUT请求（自动携带令牌）
+     * 发送HTTP PUT请求（自动携带令牌，401时自动刷新重试）
      */
     private fun httpPut(fullUrl: String, jsonBody: String): String {
         val url = URL(fullUrl)
@@ -498,9 +577,23 @@ class ApiService private constructor(val context: Context) {
             if (code == HttpURLConnection.HTTP_OK || code == HttpURLConnection.HTTP_CREATED) {
                 return conn.inputStream.bufferedReader().readText()
             }
-            val errorBody = try {
-                conn.errorStream?.bufferedReader()?.readText() ?: ""
-            } catch (e: Exception) { "" }
+            val errorBody = try { conn.errorStream?.bufferedReader()?.readText() ?: "" } catch (e: Exception) { "" }
+            if (code == 401 && tryRefreshToken()) {
+                val conn2 = url.openConnection() as HttpURLConnection
+                conn2.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn2.requestMethod = "PUT"; conn2.doOutput = true
+                conn2.connectTimeout = 15000; conn2.readTimeout = 15000
+                addAuthHeader(conn2, context)
+                try {
+                    conn2.outputStream.write(jsonBody.toByteArray(Charsets.UTF_8))
+                    val code2 = conn2.responseCode
+                    if (code2 == HttpURLConnection.HTTP_OK || code2 == HttpURLConnection.HTTP_CREATED) {
+                        return conn2.inputStream.bufferedReader().readText()
+                    }
+                    val err2 = try { conn2.errorStream?.bufferedReader()?.readText() ?: "" } catch (_: Exception) { "" }
+                    throw IOException("HTTP $code2: $err2")
+                } finally { conn2.disconnect() }
+            }
             throw IOException("HTTP $code: $errorBody")
         } finally {
             conn.disconnect()
@@ -518,14 +611,49 @@ class ApiService private constructor(val context: Context) {
         conn.readTimeout = 15000
         addAuthHeader(conn, context)
         try {
-            return conn.responseCode
+            val code = conn.responseCode
+            if (code != 401) return code
+            // 401 → 刷新后重试
+            if (tryRefreshToken()) {
+                val conn2 = url.openConnection() as HttpURLConnection
+                conn2.requestMethod = "DELETE"
+                conn2.connectTimeout = 15000; conn2.readTimeout = 15000
+                addAuthHeader(conn2, context)
+                try { return conn2.responseCode } finally { conn2.disconnect() }
+            }
+            return code
         } finally {
             conn.disconnect()
         }
     }
 
     /**
-     * 发送HTTP PATCH请求（自动携带令牌）
+     * 发送HTTP DELETE请求，返回状态码和响应体（401自动刷新重试）
+     */
+    private fun httpDeleteWithBody(fullUrl: String): Pair<Int, String> {
+        fun doDelete(url: URL, tokenOk: Boolean): Pair<Int, String> {
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "DELETE"
+            conn.connectTimeout = 15000; conn.readTimeout = 15000
+            addAuthHeader(conn, context)
+            try {
+                val code = conn.responseCode
+                val body = if (code in 200..299) {
+                    conn.inputStream.bufferedReader().readText()
+                } else {
+                    try { conn.errorStream?.bufferedReader()?.readText() ?: "" } catch (_: Exception) { "" }
+                }
+                if (code == 401 && tokenOk && tryRefreshToken()) {
+                    return doDelete(url, false) // 重试一次
+                }
+                return Pair(code, body)
+            } finally { conn.disconnect() }
+        }
+        return doDelete(URL(fullUrl), true)
+    }
+
+    /**
+     * 发送HTTP PATCH请求（自动携带令牌，401时自动刷新重试）
      */
     private fun httpPatch(fullUrl: String, jsonBody: String): String {
         val url = URL(fullUrl)
@@ -542,9 +670,23 @@ class ApiService private constructor(val context: Context) {
             if (code == HttpURLConnection.HTTP_OK || code == HttpURLConnection.HTTP_CREATED) {
                 return conn.inputStream.bufferedReader().readText()
             }
-            val errorBody = try {
-                conn.errorStream?.bufferedReader()?.readText() ?: ""
-            } catch (e: Exception) { "" }
+            val errorBody = try { conn.errorStream?.bufferedReader()?.readText() ?: "" } catch (e: Exception) { "" }
+            if (code == 401 && tryRefreshToken()) {
+                val conn2 = url.openConnection() as HttpURLConnection
+                conn2.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn2.requestMethod = "PATCH"; conn2.doOutput = true
+                conn2.connectTimeout = 15000; conn2.readTimeout = 15000
+                addAuthHeader(conn2, context)
+                try {
+                    conn2.outputStream.write(jsonBody.toByteArray(Charsets.UTF_8))
+                    val code2 = conn2.responseCode
+                    if (code2 == HttpURLConnection.HTTP_OK || code2 == HttpURLConnection.HTTP_CREATED) {
+                        return conn2.inputStream.bufferedReader().readText()
+                    }
+                    val err2 = try { conn2.errorStream?.bufferedReader()?.readText() ?: "" } catch (_: Exception) { "" }
+                    throw IOException("HTTP $code2: $err2")
+                } finally { conn2.disconnect() }
+            }
             throw IOException("HTTP $code: $errorBody")
         } finally {
             conn.disconnect()
@@ -1024,8 +1166,15 @@ class ApiService private constructor(val context: Context) {
     suspend fun deleteCategory(id: Int): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
-                val code = httpDelete("$BASE_URL/categories/$id")
-                Result.success(code == HttpURLConnection.HTTP_OK)
+                val (code, errorBody) = httpDeleteWithBody("$BASE_URL/categories/$id")
+                if (code == HttpURLConnection.HTTP_OK) {
+                    Result.success(true)
+                } else {
+                    val msg = try {
+                        JSONObject(errorBody).optString("message", "删除失败(HTTP $code)")
+                    } catch (_: Exception) { "删除失败(HTTP $code)" }
+                    Result.failure(IOException(msg))
+                }
             } catch (e: Exception) {
                 Result.failure(e)
             }
@@ -2016,6 +2165,61 @@ class ApiService private constructor(val context: Context) {
                     }
                 } else {
                     Result.failure(IOException(root.optString("message", "")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getTeacherStats(): Result<TeacherStatsResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/teacher/stats")
+                val root = JSONObject(responseBody)
+                val success = root.optBoolean("success", false)
+                val message = root.optString("message", "")
+                val dataObj = root.optJSONObject("data")
+                val data = if (dataObj != null) {
+                    val coursesArray = dataObj.optJSONArray("courses")
+                    val courses = mutableListOf<TeacherCourseStats>()
+                    if (coursesArray != null) {
+                        for (i in 0 until coursesArray.length()) {
+                            val c = coursesArray.getJSONObject(i)
+                            courses.add(TeacherCourseStats(
+                                courseId = c.optInt("courseId", 0),
+                                courseName = c.optString("courseName", ""),
+                                description = c.optString("description", ""),
+                                teacherName = c.optString("teacherName", ""),
+                                enrolledStudents = c.optInt("enrolledStudents", 0),
+                                averageWatchTime = c.optDouble("averageWatchTime", 0.0),
+                                averageProgress = c.optDouble("averageProgress", 0.0),
+                                totalWatchTime = c.optInt("totalWatchTime", 0),
+                                averageClickCount = c.optDouble("averageClickCount", 0.0),
+                                totalClickCount = c.optInt("totalClickCount", 0),
+                                averageQuizAccuracy = c.optDouble("averageQuizAccuracy", 0.0),
+                                quizAttemptCount = c.optInt("quizAttemptCount", 0),
+                                createdAt = c.optString("createdAt", "")
+                            ))
+                        }
+                    }
+                    TeacherStatsData(
+                        teacherId = dataObj.optInt("teacherId", 0),
+                        teacherName = dataObj.optString("teacherName", ""),
+                        totalCourses = dataObj.optInt("totalCourses", 0),
+                        totalStudents = dataObj.optInt("totalStudents", 0),
+                        totalWatchTime = dataObj.optInt("totalWatchTime", 0),
+                        averageWatchDuration = dataObj.optDouble("averageWatchDuration", 0.0),
+                        averageProgress = dataObj.optDouble("averageProgress", 0.0),
+                        averageClickCount = dataObj.optDouble("averageClickCount", 0.0),
+                        averageQuizAccuracy = dataObj.optDouble("averageQuizAccuracy", 0.0),
+                        courses = courses
+                    )
+                } else null
+                if (success && data != null) {
+                    Result.success(TeacherStatsResponse(success = true, message = message, data = data))
+                } else {
+                    Result.failure(IOException(message))
                 }
             } catch (e: Exception) {
                 Result.failure(e)

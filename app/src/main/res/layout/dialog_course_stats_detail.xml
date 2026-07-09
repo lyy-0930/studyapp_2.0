@@ -19,7 +19,95 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/tsinghua_purple_dark"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="12dp" />
+
+        <!-- 环形图：学习进度分布 -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📊 学习进度分布"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginBottom="8dp" />
+
+                <com.github.mikephil.charting.charts.PieChart
+                    android:id="@+id/progressPieChart"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp" />
+
+                <TextView
+                    android:id="@+id/progressSummaryText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="12sp"
+                    android:textColor="#666666"
+                    android:gravity="center"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <!-- 柱状图：答题正确率 -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/accuracyChartCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🎯 题目答题正确率"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginBottom="8dp" />
+
+                <com.github.mikephil.charting.charts.BarChart
+                    android:id="@+id/accuracyBarChart"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp" />
+
+                <TextView
+                    android:id="@+id/accuracyChartEmpty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="暂无答题数据"
+                    android:textSize="13sp"
+                    android:textColor="#999999"
+                    android:gravity="center"
+                    android:padding="16dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
 
         <!-- Tab 切换栏 -->
         <LinearLayout
@@ -47,7 +135,7 @@
                 android:layout_width="0dp"
                 android:layout_height="36dp"
                 android:layout_weight="1"
-                android:text="🎯 题目正确率"
+                android:text="🎯 题目明细"
                 android:textSize="13sp"
                 android:textColor="@color/tsinghua_purple_dark"
                 android:gravity="center"

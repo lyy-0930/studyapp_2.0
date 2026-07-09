@@ -44,10 +44,12 @@ class TeacherStatisticsActivity : AppCompatActivity() {
 
     private lateinit var courseStatisticAdapter: CourseStatisticAdapter
     private var courseStatistics: List<CourseStatistic> = emptyList()
+    private lateinit var apiService: ApiService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_teacher_statistics)
+        apiService = ApiService.getInstance(this)
 
         // 初始化视图
         initViews()
@@ -101,25 +103,18 @@ class TeacherStatisticsActivity : AppCompatActivity() {
     private suspend fun fetchTeacherStatsFromApi(teacherName: String): TeacherStatsResponse? {
         return try {
             Log.d("TeacherStatsAPI", "调用教师统计API，用户名: $teacherName")
-            val url = URL("${ApiService.BASE_URL}/teacher/stats?username=${java.net.URLEncoder.encode(teacherName, "UTF-8")}")
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "GET"
-            conn.connectTimeout = 15000
-            conn.readTimeout = 15000
-            try {
-                val responseCode = conn.responseCode
-                Log.d("TeacherStatsAPI", "HTTP $responseCode")
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val body = conn.inputStream.bufferedReader().readText()
-                    parseTeacherStatsResponse(body)
-                } else null
-            } finally {
-                conn.disconnect()
+            val result = apiService.getTeacherStats()
+            if (result.isSuccess) {
+                result.getOrThrow()
+            } else {
+                val errMsg = result.exceptionOrNull()?.message ?: "获取失败"
+                Log.w("TeacherStatsAPI", "获取失败: $errMsg")
+                TeacherStatsResponse(success = false, message = errMsg, data = null)
             }
         } catch (e: Exception) {
-            Log.e("TeacherStatsAPI", "获取教师统计数据异常: ${e.message}", e)
-            e.printStackTrace()
-            null
+            val errMsg = "请求异常: ${e.message}"
+            Log.e("TeacherStatsAPI", errMsg, e)
+            TeacherStatsResponse(success = false, message = errMsg, data = null)
         }
     }
 
