@@ -2672,44 +2672,101 @@ app.get('/admin/activity-ranking', async (req, res) => {
                 COALESCE(AVG(sr.progress), 0) as avg_progress,
                 COALESCE(SUM(sr.click_count), 0) as total_click_count,
                 COUNT(sr.id) as study_records_count,
-                COUNT(DISTINCT DATE(sr.last_watch_time)) as login_count,
+                COUNT(DISTINCT DATE(sr.last_watch_time)) as active_days,
                 COUNT(DISTINCT CASE WHEN sr.progress >= 100 THEN sr.course_id END) as completed_courses,
-                COALESCE(SUM(qa.score), 0) as total_quiz_score
+                COALESCE(COUNT(DISTINCT qa.id), 0) as quiz_attempts,
+                COALESCE(SUM(qa.total_questions), 0) as total_quiz_questions,
+                COALESCE(SUM(qa.score), 0) as total_quiz_score,
+                COALESCE(ce.enrolled_count, 0) as enrolled_courses,
+                COALESCE(ce.unstudied_count, 0) as enrolled_unstudied
             FROM users u
             LEFT JOIN study_records sr ON u.id = sr.student_id
                 AND sr.last_watch_time >= ?
                 AND sr.watch_time > 0
             LEFT JOIN quiz_attempts qa ON u.id = qa.student_id
                 AND qa.submitted_at >= ?
-            GROUP BY u.id, u.username, u.role, u.last_active_at
+            LEFT JOIN (
+                SELECT
+                    student_id,
+                    COUNT(*) as enrolled_count,
+                    SUM(CASE WHEN last_study IS NULL THEN 1 ELSE 0 END) as unstudied_count
+                FROM (
+                    SELECT ce.student_id, ce.course_id,
+                        (SELECT MAX(sr2.last_watch_time) FROM study_records sr2
+                         WHERE sr2.student_id = ce.student_id AND sr2.course_id = ce.course_id) as last_study
+                    FROM course_enrollments ce
+                ) subq
+                GROUP BY student_id
+            ) ce ON u.id = ce.student_id
+            GROUP BY u.id, u.username, u.role, u.last_active_at, ce.enrolled_count, ce.unstudied_count
             ORDER BY total_watch_time DESC
-            LIMIT 20
         `, [startDateStr, startDateStr]);
 
-        // ═══════════════════════════════════════════════
-        // 活跃度计算公式（用户自定义）：
-        // 活跃度 = 登录次数 × 1
-        //        + 学习时长 × 0.5
-        //        + 完成课程 × 20
-        //        + 答题成绩 × 1
-        // ═══════════════════════════════════════════════
-        const statsWithScore = activityStats.map(stat => {
-            const loginScore = (stat.login_count || 0) * 1;
-            const watchTimeScore = (stat.total_watch_time || 0) * 0.5;
-            const completedCourseScore = (stat.completed_courses || 0) * 20;
-            const quizScore = (stat.total_quiz_score || 0) * 1;
+        // 计算连续登录天数（需要在内存中处理日期连续性）
+        const now = new Date();
+        const consecutivePromises = activityStats.map(async (stat) => {
+            const days = await db.executeQuery(`
+                SELECT DISTINCT DATE(last_watch_time) as study_date
+                FROM study_records
+                WHERE student_id = ? AND last_watch_time >= ? AND watch_time > 0
+                ORDER BY study_date DESC
+            `, [stat.id, startDateStr]);
+            let streak = 0;
+            const checkDate = new Date();
+            checkDate.setHours(0, 0, 0, 0);
+            for (const row of days) {
+                const rowDate = new Date(row.study_date);
+                rowDate.setHours(0, 0, 0, 0);
+                const diff = (checkDate - rowDate) / (1000 * 60 * 60 * 24);
+                if (diff === streak) { streak++; }
+                else if (diff > streak) { break; }
+            }
+            return { id: stat.id, consecutiveDays: streak };
+        });
+        const consecutiveResults = await Promise.all(consecutivePromises);
+        const consecutiveMap = {};
+        consecutiveResults.forEach(r => { consecutiveMap[r.id] = r.consecutiveDays; });
 
-            const activityScore = Math.round(
-                (loginScore + watchTimeScore + completedCourseScore + quizScore) * 10
-            ) / 10;
+        // ═══════════════════════════════════════════════════════════
+        // 活跃度计算公式（新版 v2.0）：
+        //   活跃度 = 有效学习时长(分钟) × 2
+        //           + 完课数 × 15
+        //           + 答题得分（正确率 × 答题数 × 0.5）
+        //           + 连续登录加成（3天+5, 7天+15, 30天+50）
+        //           - 选课未学扣分（每门未学课程 × 5）
+        //
+        //   等级划分（周）:
+        //     ≥ 500  ⭐⭐⭐ 非常活跃
+        //     200-499 ⭐⭐ 活跃
+        //     50-199 ⭐ 一般
+        //     < 50   ○ 不活跃
+        // ═══════════════════════════════════════════════════════════
+        const statsWithScore = activityStats.map(stat => {
+            const consecutiveDays = consecutiveMap[stat.id] || 0;
+            const effectiveStudyScore = (stat.total_watch_time || 0) * 2;
+            const completedCourseScore = (stat.completed_courses || 0) * 15;
+            const quizAttempts = stat.quiz_attempts || 0;
+            const avgQuizAccuracy = quizAttempts > 0 ? (stat.total_quiz_score || 0) / 100 / quizAttempts : 0;
+            const quizScore = avgQuizAccuracy * (stat.total_quiz_questions || 0) * 0.5;
+            let loginBonus = 0;
+            if (consecutiveDays >= 3) loginBonus += 5;
+            if (consecutiveDays >= 7) loginBonus += 15;
+            if (consecutiveDays >= 30) loginBonus += 50;
+            const coursePenalty = (stat.enrolled_unstudied || 0) * 5;
+
+            const activityScore = Math.max(0, Math.round(
+                (effectiveStudyScore + completedCourseScore + quizScore + loginBonus - coursePenalty) * 10
+            ) / 10);
 
             return {
                 ...stat,
+                consecutive_days: consecutiveDays,
                 activity_score: activityScore,
-                login_score: Math.round(loginScore * 10) / 10,
-                watch_time_score: Math.round(watchTimeScore * 10) / 10,
+                effective_study_score: Math.round(effectiveStudyScore * 10) / 10,
                 completed_course_score: Math.round(completedCourseScore * 10) / 10,
-                quiz_score: Math.round(quizScore * 10) / 10
+                quiz_score: Math.round(quizScore * 10) / 10,
+                login_bonus: loginBonus,
+                course_penalty: coursePenalty
             };
         });
 
@@ -2723,10 +2780,10 @@ app.get('/admin/activity-ranking', async (req, res) => {
         const averageActivityScore = totalUsers > 0 ? statsWithScore.reduce((sum, stat) => sum + stat.activity_score, 0) / totalUsers : 0;
         const maxActivityScore = totalUsers > 0 ? Math.max(...statsWithScore.map(stat => stat.activity_score)) : 0;
 
-        // 计算活跃度分布
-        const highCount = statsWithScore.filter(stat => stat.activity_score >= 70).length;
-        const mediumCount = statsWithScore.filter(stat => stat.activity_score >= 40 && stat.activity_score < 70).length;
-        const lowCount = statsWithScore.filter(stat => stat.activity_score < 40).length;
+        // 计算活跃度分布（新版等级）
+        const highCount = statsWithScore.filter(stat => stat.activity_score >= 500).length;
+        const mediumCount = statsWithScore.filter(stat => stat.activity_score >= 200 && stat.activity_score < 500).length;
+        const lowCount = statsWithScore.filter(stat => stat.activity_score < 200).length;
 
         successResponse(res, {
             stats: {
@@ -2748,6 +2805,7 @@ app.get('/admin/activity-ranking', async (req, res) => {
                 user_id: stat.id,
                 username: stat.username,
                 role: stat.role,
+                consecutive_days: stat.consecutive_days || 0,
                 last_active_at: stat.last_active_at,
                 activity_score: stat.activity_score,
                 details: {
@@ -2755,14 +2813,17 @@ app.get('/admin/activity-ranking', async (req, res) => {
                     avg_progress: parseFloat(Number(stat.avg_progress).toFixed(1)),
                     total_click_count: parseInt(stat.total_click_count) || 0,
                     study_records_count: stat.study_records_count || 0,
-                    login_count: stat.login_count || 0,
+                    active_days: stat.active_days || 0,
                     completed_courses: stat.completed_courses || 0,
-                    total_quiz_score: parseInt(stat.total_quiz_score) || 0,
+                    quiz_attempts: stat.quiz_attempts || 0,
+                    enrolled_courses: stat.enrolled_courses || 0,
+                    enrolled_unstudied: stat.enrolled_unstudied || 0,
                     scores: {
-                        login: stat.login_score,
-                        watch_time: stat.watch_time_score,
-                        completed_course: stat.completed_course_score,
-                        quiz: stat.quiz_score
+                        effective_study: stat.effective_study_score || 0,
+                        completed_course: stat.completed_course_score || 0,
+                        quiz: stat.quiz_score || 0,
+                        login_bonus: stat.login_bonus || 0,
+                        course_penalty: stat.course_penalty || 0
                     }
                 }
             }))

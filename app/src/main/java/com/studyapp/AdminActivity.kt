@@ -1334,10 +1334,13 @@ class AdminActivity : AppCompatActivity() {
             setTextColor(resources.getColor(R.color.darker_gray))
         }
 
-        // 分数构成小字：登录×1 + 时长×0.5 + 课程×20 + 答题×1
+        // 分数构成小字：有效学习×2 + 完课×15 + 答题得分 + 连续登录加成 - 未学扣分
         val details = item.details
+        val scores = details.scores
         val breakdownText = TextView(this).apply {
-            text = "登录${details.loginCount}次 + 时长${details.totalWatchTime}min + 完成${details.completedCourses}课 + 答题${details.totalQuizScore}分"
+            text = "学习${scores.effectiveStudy.toInt()}分 + 完课${scores.completedCourse.toInt()}分 + 答题${scores.quiz.toInt()}分" +
+                (if (scores.loginBonus > 0) " + 连续${item.consecutiveDays}天+${scores.loginBonus.toInt()}分" else "") +
+                (if (scores.coursePenalty > 0) " - ${scores.coursePenalty.toInt()}分" else "")
             textSize = 10f
             setTextColor(resources.getColor(R.color.darker_gray))
             alpha = 0.6f

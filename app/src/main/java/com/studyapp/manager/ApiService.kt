@@ -124,20 +124,28 @@ class ApiService private constructor(val context: Context) {
         val avgProgress: Double,
         val totalClickCount: Int,
         val studyRecordsCount: Int,
-        val loginCount: Int = 0,
+        val activeDays: Int = 0,
         val completedCourses: Int = 0,
-        val totalQuizScore: Int = 0,
+        val quizAttempts: Int = 0,
+        val enrolledCourses: Int = 0,
+        val enrolledUnstudied: Int = 0,
         val scores: ActivityScores
     )
 
     /**
-     * 活跃度各项分数数据模型
+     * 活跃度各项分数数据模型（新版 v2.0）
+     *   effectiveStudy: 有效学习时长 × 2
+     *   completedCourse: 完课数 × 15
+     *   quiz: 正确率 × 答题数 × 0.5
+     *   loginBonus: 连续登录加成
+     *   coursePenalty: 选课未学扣分
      */
     data class ActivityScores(
-        val login: Double = 0.0,
-        val watchTime: Double = 0.0,
+        val effectiveStudy: Double = 0.0,
         val completedCourse: Double = 0.0,
-        val quiz: Double = 0.0
+        val quiz: Double = 0.0,
+        val loginBonus: Double = 0.0,
+        val coursePenalty: Double = 0.0
     )
 
     /**
@@ -148,6 +156,7 @@ class ApiService private constructor(val context: Context) {
         val userId: Int,
         val username: String,
         val role: String,
+        val consecutiveDays: Int = 0,
         val lastActiveAt: String,
         val activityScore: Double,
         val details: ActivityScoreDetails
@@ -1472,6 +1481,7 @@ class ApiService private constructor(val context: Context) {
                                     userId = r.getInt("user_id"),
                                     username = r.getString("username"),
                                     role = r.optString("role", ""),
+                                    consecutiveDays = r.optInt("consecutive_days", 0),
                                     lastActiveAt = r.optString("last_active_at", ""),
                                     activityScore = r.optDouble("activity_score", 0.0),
                                     details = ActivityScoreDetails(
@@ -1479,14 +1489,17 @@ class ApiService private constructor(val context: Context) {
                                         avgProgress = detObj?.optDouble("avg_progress", 0.0) ?: 0.0,
                                         totalClickCount = detObj?.optInt("total_click_count", 0) ?: 0,
                                         studyRecordsCount = detObj?.optInt("study_records_count", 0) ?: 0,
-                                        loginCount = detObj?.optInt("login_count", 0) ?: 0,
+                                        activeDays = detObj?.optInt("active_days", 0) ?: 0,
                                         completedCourses = detObj?.optInt("completed_courses", 0) ?: 0,
-                                        totalQuizScore = detObj?.optInt("total_quiz_score", 0) ?: 0,
+                                        quizAttempts = detObj?.optInt("quiz_attempts", 0) ?: 0,
+                                        enrolledCourses = detObj?.optInt("enrolled_courses", 0) ?: 0,
+                                        enrolledUnstudied = detObj?.optInt("enrolled_unstudied", 0) ?: 0,
                                         scores = ActivityScores(
-                                            login = scoresObj?.optDouble("login", 0.0) ?: 0.0,
-                                            watchTime = scoresObj?.optDouble("watch_time", 0.0) ?: 0.0,
+                                            effectiveStudy = scoresObj?.optDouble("effective_study", 0.0) ?: 0.0,
                                             completedCourse = scoresObj?.optDouble("completed_course", 0.0) ?: 0.0,
-                                            quiz = scoresObj?.optDouble("quiz", 0.0) ?: 0.0
+                                            quiz = scoresObj?.optDouble("quiz", 0.0) ?: 0.0,
+                                            loginBonus = scoresObj?.optDouble("login_bonus", 0.0) ?: 0.0,
+                                            coursePenalty = scoresObj?.optDouble("course_penalty", 0.0) ?: 0.0
                                         )
                                     )
                                 ))
