@@ -147,7 +147,8 @@ class TeacherActivity : AppCompatActivity() {
         myCoursesRecyclerView.layoutManager = LinearLayoutManager(this)
         myCoursesRecyclerView.adapter = teacherCourseAdapter
         teacherCourseAdapter.setOnCourseActionListener(object : TeacherCourseAdapter.OnCourseActionListener {
-            override fun onPreview(course: ApiCourse, position: Int) = showCourseDetailDialog(course)
+            override fun onPlayVideo(course: ApiCourse, position: Int) = playCourseVideo(course)
+            override fun onManageQuestions(course: ApiCourse, position: Int) = manageCourseQuestions(course)
             override fun onUploadMaterial(course: ApiCourse, position: Int) = pickMaterialFile(course)
             override fun onDelete(course: ApiCourse, position: Int) = confirmDeleteCourse(course)
         })
@@ -368,6 +369,23 @@ class TeacherActivity : AppCompatActivity() {
     }
 
     // ==================== 题目管理 ====================
+
+    private fun playCourseVideo(course: ApiCourse) {
+        if (course.videoUrl.isNullOrEmpty()) {
+            Toast.makeText(this, "该课程暂无视频", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = Intent(this, VideoPlayerActivity::class.java).apply {
+            putExtra(VideoPlayerActivity.EXTRA_VIDEO_URL, course.videoUrl)
+            putExtra(VideoPlayerActivity.EXTRA_COURSE_NAME, course.name)
+            putExtra("course_id", course.id)
+        }
+        startActivity(intent)
+    }
+
+    private fun manageCourseQuestions(course: ApiCourse) {
+        showQuestionManagement(course.id, course.name)
+    }
 
     private fun showQuestionManagement(courseId: Int, courseName: String) {
         showPanel(5)

@@ -4,17 +4,21 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.studyapp.R
+import com.studyapp.manager.ApiService
 import com.studyapp.model.ApiCourse
+import com.studyapp.util.ImageLoaderUtil
 
 class TeacherCourseAdapter(
     private var courseList: List<ApiCourse> = listOf()
 ) : RecyclerView.Adapter<TeacherCourseAdapter.ViewHolder>() {
 
     interface OnCourseActionListener {
-        fun onPreview(course: ApiCourse, position: Int)
+        fun onPlayVideo(course: ApiCourse, position: Int)
+        fun onManageQuestions(course: ApiCourse, position: Int)
         fun onUploadMaterial(course: ApiCourse, position: Int)
         fun onDelete(course: ApiCourse, position: Int)
     }
@@ -47,9 +51,11 @@ class TeacherCourseAdapter(
         private val courseName: TextView = itemView.findViewById(R.id.teacherCourseName)
         private val courseDesc: TextView = itemView.findViewById(R.id.teacherCourseDesc)
         private val courseTeacher: TextView = itemView.findViewById(R.id.teacherCourseTeacher)
-        private val courseStudents: TextView = itemView.findViewById(R.id.teacherCourseStudents)
         private val courseDate: TextView = itemView.findViewById(R.id.teacherCourseDate)
-        private val previewBtn: Button = itemView.findViewById(R.id.previewCourseBtn)
+        private val coverImage: ImageView = itemView.findViewById(R.id.teacherCourseCoverImage)
+        private val iconText: TextView = itemView.findViewById(R.id.teacherCourseIconText)
+        private val playBtn: Button = itemView.findViewById(R.id.playVideoBtn)
+        private val manageBtn: Button = itemView.findViewById(R.id.manageQuestionsBtn)
         private val uploadBtn: Button = itemView.findViewById(R.id.uploadMaterialBtn)
         private val deleteBtn: Button = itemView.findViewById(R.id.deleteCourseBtn)
 
@@ -59,10 +65,21 @@ class TeacherCourseAdapter(
             courseTeacher.text = "教师：${course.teacherName ?: course.teacher}"
             courseDate.text = "创建时间：${course.createdAt?.take(10) ?: "未知"}"
 
-            val teacherName = course.teacherName ?: course.teacher
-            courseStudents.text = "授课教师：$teacherName"
+            // 加载课程封面图
+            val imageUrl = course.imageUrl
+            if (!imageUrl.isNullOrEmpty()) {
+                val fullUrl = if (imageUrl.startsWith("http")) imageUrl
+                    else "${ApiService.BASE_URL}$imageUrl"
+                coverImage.visibility = View.VISIBLE
+                iconText.visibility = View.GONE
+                ImageLoaderUtil.load(coverImage, fullUrl, crossfade = true)
+            } else {
+                coverImage.visibility = View.GONE
+                iconText.visibility = View.VISIBLE
+            }
 
-            previewBtn.setOnClickListener { listener?.onPreview(course, position) }
+            playBtn.setOnClickListener { listener?.onPlayVideo(course, position) }
+            manageBtn.setOnClickListener { listener?.onManageQuestions(course, position) }
             uploadBtn.setOnClickListener { listener?.onUploadMaterial(course, position) }
             deleteBtn.setOnClickListener { listener?.onDelete(course, position) }
         }

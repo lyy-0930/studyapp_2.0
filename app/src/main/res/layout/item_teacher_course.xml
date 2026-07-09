@@ -3,119 +3,179 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp"
     app:cardBackgroundColor="@color/white">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/teacherCourseName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="课程名称"
-            android:textSize="17sp"
-            android:textStyle="bold"
-            android:textColor="@color/tsinghua_purple_dark"
-            android:layout_marginBottom="6dp" />
+        <!-- 左侧：课程封面图 -->
+        <FrameLayout
+            android:id="@+id/teacherCourseImageContainer"
+            android:layout_width="150dp"
+            android:layout_height="match_parent"
+            android:minHeight="150dp">
 
-        <TextView
-            android:id="@+id/teacherCourseDesc"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="课程描述"
-            android:textSize="13sp"
-            android:textColor="#666666"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:layout_marginBottom="8dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="10dp">
+            <ImageView
+                android:id="@+id/teacherCourseCoverImage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
 
             <TextView
-                android:id="@+id/teacherCourseTeacher"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="教师："
-                android:textSize="12sp"
-                android:textColor="#999999" />
+                android:id="@+id/teacherCourseIconText"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="📘"
+                android:textSize="40sp"
+                android:gravity="center"
+                android:background="@color/light_gray_background" />
 
-            <TextView
-                android:id="@+id/teacherCourseDate"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="创建时间："
-                android:textSize="12sp"
-                android:textColor="#999999" />
+        </FrameLayout>
 
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/teacherCourseStudents"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="12sp"
-            android:textColor="#999999"
-            android:layout_marginBottom="12dp"
-            android:visibility="gone" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#F0F0F0"
-            android:layout_marginBottom="10dp" />
-
+        <!-- 右侧：课程信息 + 按钮 -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:padding="12dp"
             android:gravity="center_vertical">
 
-            <Button
-                android:id="@+id/previewCourseBtn"
-                android:layout_width="0dp"
-                android:layout_height="34dp"
-                android:layout_weight="1"
-                android:text="预览详情"
-                android:textSize="12sp"
-                android:textColor="@color/tsinghua_purple"
-                android:backgroundTint="#F0E6F6"
-                android:layout_marginEnd="6dp"
-                android:paddingHorizontal="4dp" />
+            <!-- 课程名称 -->
+            <TextView
+                android:id="@+id/teacherCourseName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="课程名称"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:textColor="@color/tsinghua_purple_dark"
+                android:layout_marginBottom="4dp" />
 
-            <Button
-                android:id="@+id/uploadMaterialBtn"
-                android:layout_width="0dp"
-                android:layout_height="34dp"
-                android:layout_weight="1"
-                android:text="上传资料"
-                android:textSize="12sp"
-                android:textColor="@color/tsinghua_purple"
-                android:backgroundTint="#F0E6F6"
-                android:layout_marginEnd="6dp"
-                android:paddingHorizontal="4dp" />
+            <!-- 课程描述 -->
+            <TextView
+                android:id="@+id/teacherCourseDesc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="课程描述"
+                android:textSize="13sp"
+                android:textColor="#666666"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:layout_marginBottom="6dp" />
 
-            <Button
-                android:id="@+id/deleteCourseBtn"
-                android:layout_width="0dp"
-                android:layout_height="34dp"
-                android:layout_weight="1"
-                android:text="删除"
-                android:textSize="12sp"
-                android:textColor="@color/white"
-                android:backgroundTint="#FF6B6B"
-                android:paddingHorizontal="4dp" />
+            <!-- 授课教师 + 创建时间 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:id="@+id/teacherCourseTeacher"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="教师："
+                    android:textSize="12sp"
+                    android:textColor="#999999" />
+
+                <TextView
+                    android:id="@+id/teacherCourseDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="创建时间："
+                    android:textSize="12sp"
+                    android:textColor="#999999" />
+
+            </LinearLayout>
+
+            <!-- 分割线 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#F0F0F0"
+                android:layout_marginBottom="8dp" />
+
+            <!-- 四个功能按钮 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <Button
+                    android:id="@+id/playVideoBtn"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:text="播放视频"
+                    android:textSize="11sp"
+                    android:textColor="@color/white"
+                    android:backgroundTint="@color/tsinghua_purple"
+                    android:layout_marginEnd="4dp"
+                    android:paddingHorizontal="2dp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
+
+                <Button
+                    android:id="@+id/manageQuestionsBtn"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:text="管理题目"
+                    android:textSize="11sp"
+                    android:textColor="@color/tsinghua_purple"
+                    android:backgroundTint="#F0E6F6"
+                    android:layout_marginEnd="4dp"
+                    android:paddingHorizontal="2dp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="6dp">
+
+                <Button
+                    android:id="@+id/uploadMaterialBtn"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:text="上传资料"
+                    android:textSize="11sp"
+                    android:textColor="@color/tsinghua_purple"
+                    android:backgroundTint="#F0E6F6"
+                    android:layout_marginEnd="4dp"
+                    android:paddingHorizontal="2dp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
+
+                <Button
+                    android:id="@+id/deleteCourseBtn"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:text="删除课程"
+                    android:textSize="11sp"
+                    android:textColor="@color/white"
+                    android:backgroundTint="#FF6B6B"
+                    android:paddingHorizontal="2dp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
