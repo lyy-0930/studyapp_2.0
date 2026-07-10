@@ -230,56 +230,76 @@ class QuestionManageFragment : Fragment() {
     // ==================== PPT上传 + 解析 ====================
 
     private val pptPickerLauncher = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
+            // 持久化读权限（Android 11+ 需要）
+            try {
+                requireContext().contentResolver.takePersistableUriPermission(uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch (_: Exception) {}
             uploadAndParsePpt(uri)
         }
     }
 
     private fun pickPptFile() {
         Toast.makeText(requireContext(), "请选择PPT文件", Toast.LENGTH_SHORT).show()
-        pptPickerLauncher.launch("application/vnd.openxmlformats-officedocument.presentationml.presentation")
+        try {
+            pptPickerLauncher.launch(arrayOf(
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                "application/vnd.ms-powerpoint"
+            ))
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "无法打开文件选择器: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun uploadAndParsePpt(uri: android.net.Uri) {
-        loadingText.text = "正在解析PPT..."
+        loadingText.text = "正在上传PPT到服务器..."
         loadingText.visibility = View.VISIBLE
 
         scope.launch {
             try {
-                // 使用 PPTXParser 提取幻灯片文本
-                val slideTexts = withContext(Dispatchers.IO) {
-                    val inputStream = requireContext().contentResolver.openInputStream(uri)
-                        ?: throw Exception("无法读取文件")
-                    val result = PPTXParser.parse(inputStream)
-                    inputStream.close()
-                    result
+                // 读取文件字节（分块读取，避免大文件 OOM）
+                val pptBytes = withContext(Dispatchers.IO) {
+                    val baos = java.io.ByteArrayOutputStream()
+                    var totalRead = 0
+                    try {
+                        val inputStream = requireContext().contentResolver.openInputStream(uri)
+                        if (inputStream == null) throw Exception("无法打开文件")
+                        val buf = ByteArray(65536) // 64KB 缓冲
+                        var len: Int
+                        while (inputStream.read(buf).also { len = it } != -1) {
+                            baos.write(buf, 0, len)
+                            totalRead += len
+                        }
+                        inputStream.close()
+                    } catch (e: java.io.FileNotFoundException) {
+                        throw Exception("文件不存在或已被删除")
+                    } catch (e: Exception) {
+                        throw Exception("读取文件失败: ${e.message}")
+                    }
+                    if (totalRead == 0) throw Exception("文件内容为空")
+                    android.util.Log.d("PPT_UPLOAD", "读取成功: $totalRead 字节")
+                    baos.toByteArray()
                 }
 
-                if (slideTexts.isEmpty()) {
-                    Toast.makeText(requireContext(), "未能从PPT中提取到文本内容", Toast.LENGTH_LONG).show()
-                    loadingText.visibility = View.GONE
-                    return@launch
+                loadingText.text = "正在上传解析（${pptBytes.size / 1024}KB）..."
+                val result = withContext(Dispatchers.IO) {
+                    apiService.uploadAndParsePptBytes(courseId, pptBytes)
                 }
-
-                // 保存幻灯片文本到后端
-                loadingText.text = "正在保存幻灯片文本（${slideTexts.size}页）..."
-                val saveResult = withContext(Dispatchers.IO) {
-                    apiService.saveSlideTexts(courseId, slideTexts)
-                }
-
                 loadingText.visibility = View.GONE
 
-                if (saveResult.isSuccess) {
-                    Toast.makeText(requireContext(), "PPT解析成功！提取了${slideTexts.size}页文本，点击AI出题按钮生成题目", Toast.LENGTH_LONG).show()
+                if (result.isSuccess) {
+                    val data = result.getOrThrow()
+                    Toast.makeText(requireContext(), "PPT解析成功！提取了${data.slideCount}页文本，点击AI出题生成题目", Toast.LENGTH_LONG).show()
                 } else {
-                    val err = saveResult.exceptionOrNull()?.message ?: "保存失败"
-                    Toast.makeText(requireContext(), "保存幻灯片文本失败: $err", Toast.LENGTH_LONG).show()
+                    val err = result.exceptionOrNull()?.message ?: "解析失败"
+                    Toast.makeText(requireContext(), "PPT解析失败: $err", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 loadingText.visibility = View.GONE
-                Toast.makeText(requireContext(), "PPT解析失败: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(requireContext(), "PPT处理失败: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }

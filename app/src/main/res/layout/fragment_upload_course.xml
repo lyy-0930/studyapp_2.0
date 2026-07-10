@@ -198,50 +198,6 @@
 
                 </LinearLayout>
 
-                <!-- PPT 文件选择 -->
-                <Button
-                    android:id="@+id/selectPptButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="选择PPT文件（自动出题）"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:backgroundTint="#E8E8E8"
-                    android:textColor="@color/tsinghua_purple_dark"
-                    android:paddingVertical="10dp"
-                    android:layout_marginBottom="12dp" />
-
-                <!-- 选中的PPT信息 -->
-                <LinearLayout
-                    android:id="@+id/pptInfoContainer"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone"
-                    android:background="@drawable/edit_text_background"
-                    android:padding="16dp"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView
-                        android:id="@+id/pptFileNameTextView"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="未选择PPT"
-                        android:textSize="15sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/tsinghua_purple_dark" />
-
-                    <TextView
-                        android:id="@+id/questionCountHint"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:hint="选择PPT后将在上传课程时自动生成选择题"
-                        android:textSize="12sp"
-                        android:textColor="@color/darker_gray"
-                        android:layout_marginTop="4dp" />
-
-                </LinearLayout>
-
                 <!-- 上传进度条 -->
                 <LinearLayout
                     android:id="@+id/progressContainer"

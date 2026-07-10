@@ -1048,8 +1048,36 @@ class StudentActivity : AppCompatActivity(),
         val fileName = material.fileName
         val fileType = material.fileType?.lowercase() ?: ""
 
-        // 所有文件统一先下载到缓存，再用 FileProvider 打开
-        // 这样 Android 会弹出"打开方式"选择器，用户可选择 WPS 等应用
+        // HTML 预览文件（PPT 转换的幻灯片文字预览）
+        if (fileType == "html") {
+            // 用浏览器打开（adb reverse 正常时 127.0.0.1:3001 可访问）
+            try {
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).apply {
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+            } catch (_: Exception) {
+                // 降级：下载 HTML 后用 TextView 显示
+                coroutineScope.launch {
+                    try {
+                        val html = withContext(Dispatchers.IO) {
+                            java.net.URL(url).readText()
+                        }
+                        val text = html.replace(Regex("<[^>]+>"), " ").replace(Regex("\\s+"), " ").trim()
+                        androidx.appcompat.app.AlertDialog.Builder(this@StudentActivity)
+                            .setTitle("PPT预览 - $fileName")
+                            .setMessage(text)
+                            .setPositiveButton("关闭", null)
+                            .show()
+                    } catch (_: Exception) {
+                        android.widget.Toast.makeText(this@StudentActivity, "无法打开预览", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            return
+        }
+
+        // 其他文件（PDF/PPTX等）先下载再用 FileProvider 打开
         val safeName = fileName.replace(Regex("[/\\\\:*?\"<>|]"), "_")
         val cacheFile = java.io.File(cacheDir, safeName)
         if (cacheFile.exists() && cacheFile.length() > 0) {
@@ -1102,12 +1130,23 @@ class StudentActivity : AppCompatActivity(),
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
-        } catch (_: android.content.ActivityNotFoundException) {
-            android.widget.Toast.makeText(
-                this@StudentActivity,
-                "无法打开此文件，请在手机安装 WPS 等应用",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+        } catch (e: Exception) {
+            // FileProvider可能因系统bug抛出StringIndexOutOfBoundsException
+            try {
+                // 降级方案：直接用file:// URI（Android 10以下可用）
+                val uri = android.net.Uri.fromFile(file)
+                startActivity(Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, mimeType)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                })
+            } catch (_: Exception) {
+                android.widget.Toast.makeText(
+                    this@StudentActivity,
+                    "无法打开此文件，请在手机安装 WPS 等应用",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 

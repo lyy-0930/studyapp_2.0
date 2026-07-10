@@ -66,14 +66,6 @@ class UploadCourseFragment : Fragment() {
     private var categories = listOf<Category>()
     private var selectedCategoryId: Int? = null
 
-    // PPT 相关
-    private lateinit var selectPptButton: Button
-    private lateinit var pptInfoContainer: LinearLayout
-    private lateinit var pptFileNameTextView: TextView
-    private lateinit var questionCountHint: TextView
-    private var selectedPptUri: Uri? = null
-    private var selectedPptName: String? = null
-
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
     private val ossUploadManager = OSSUploadManager.getInstance()
     private lateinit var apiService: ApiService
@@ -126,27 +118,6 @@ class UploadCourseFragment : Fragment() {
         }
     }
 
-    private val selectPptLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.data?.let { uri ->
-                val name = getFileNameFromUri(uri)
-                val ext = name.substringAfterLast('.', "").lowercase()
-                if (ext != "pptx") {
-                    Toast.makeText(requireContext(), "请选择 .pptx 格式的PPT文件", Toast.LENGTH_LONG).show()
-                    return@let
-                }
-                selectedPptUri = uri
-                selectedPptName = name
-                pptFileNameTextView.text = name
-                questionCountHint.text = "已选择PPT，将在上传时自动生成选择题"
-                pptInfoContainer.visibility = View.VISIBLE
-                Toast.makeText(requireContext(), "PPT选择成功", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         loadCurrentUserInfo()
@@ -182,10 +153,6 @@ class UploadCourseFragment : Fragment() {
         aiGenerateCoverButton = view.findViewById(R.id.aiGenerateCoverButton)
         coverPromptEditText = view.findViewById(R.id.coverPromptEditText)
         categorySpinner = view.findViewById(R.id.categorySpinner)
-        selectPptButton = view.findViewById(R.id.selectPptButton)
-        pptInfoContainer = view.findViewById(R.id.pptInfoContainer)
-        pptFileNameTextView = view.findViewById(R.id.pptFileNameTextView)
-        questionCountHint = view.findViewById(R.id.questionCountHint)
     }
 
     private fun setupClickListeners() {
@@ -195,7 +162,6 @@ class UploadCourseFragment : Fragment() {
             startActivity(Intent(requireContext(), NetworkTestActivity::class.java))
         }
         aiGenerateCoverButton.setOnClickListener { generateCourseCover() }
-        selectPptButton.setOnClickListener { openPptPicker() }
     }
 
     // ==================== Category Selection ====================
@@ -242,18 +208,6 @@ class UploadCourseFragment : Fragment() {
                 addCategory(Intent.CATEGORY_OPENABLE)
             }
             selectVideoLauncher.launch(Intent.createChooser(intent, "选择视频文件"))
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "无法打开文件选择器: ${e.message}", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun openPptPicker() {
-        try {
-            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                addCategory(Intent.CATEGORY_OPENABLE)
-            }
-            selectPptLauncher.launch(Intent.createChooser(intent, "选择PPT文件"))
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "无法打开文件选择器: ${e.message}", Toast.LENGTH_LONG).show()
         }
@@ -623,56 +577,8 @@ class UploadCourseFragment : Fragment() {
                                 CourseManager.saveCourse(requireContext(), course)
 
                                 // 如果有PPT，解析并保存文本 + AI生成题目
-                                var generatedQuestionCount = 0
-                                var questionGenError: String? = null
-                                if (selectedPptUri != null) {
-                                    try {
-                                        requireActivity().runOnUiThread {
-                                            progressText.text = "正在解析PPT..."
-                                        }
-                                        val pptStream = requireContext().contentResolver.openInputStream(selectedPptUri!!)
-                                        if (pptStream != null) {
-                                            val slideTexts = PPTXParser.parse(pptStream)
-                                            pptStream.close()
-
-                                            if (slideTexts.isNotEmpty()) {
-                                                // 1. 保存幻灯片文本到服务器
-                                                requireActivity().runOnUiThread {
-                                                    progressText.text = "正在保存幻灯片文本..."
-                                                }
-                                                val saveTextsResult = apiService.saveSlideTexts(
-                                                    courseData.courseId, slideTexts
-                                                )
-                                                if (saveTextsResult.isSuccess) {
-                                                    // 2. 调用AI生成题目
-                                                    requireActivity().runOnUiThread {
-                                                        progressText.text = "AI正在根据PPT内容生成题目..."
-                                                    }
-                                                    val aiResult = apiService.aiGenerateQuestions(
-                                                        courseData.courseId
-                                                    )
-                                                    if (aiResult.isSuccess) {
-                                                        generatedQuestionCount = -1 // 标记成功
-                                                    } else {
-                                                        questionGenError = "AI出题失败: ${aiResult.exceptionOrNull()?.message}"
-                                                    }
-                                                } else {
-                                                    questionGenError = "保存PPT文本失败"
-                                                }
-                                            } else {
-                                                questionGenError = "PPT中未提取到文本内容（可能全是图片/公式）"
-                                            }
-                                        } else {
-                                            questionGenError = "无法读取PPT文件"
-                                        }
-                                    } catch (e: Exception) {
-                                        questionGenError = "PPT解析失败: ${e.message}"
-                                        android.util.Log.w("UploadCourse", "PPT解析失败: ${e.message}", e)
-                                    }
-                                }
-
-                                val finalQuestionCount = generatedQuestionCount
-                                val finalError = questionGenError
+                                val finalQuestionCount = 0
+                                val finalError: String? = null
                                 requireActivity().runOnUiThread {
                                     if (finalQuestionCount != 0) {
                                         val msg = if (finalQuestionCount < 0) {

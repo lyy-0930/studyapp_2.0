@@ -17,32 +17,32 @@ object PPTXParser {
      */
     fun parse(inputStream: InputStream): List<String> {
         val slides = mutableListOf<String>()
-        val slidesXml = mutableListOf<String>()
 
         try {
             val zip = ZipInputStream(inputStream)
 
-            // 第一遍：读取所有 slide XML 文件
             var entry = zip.nextEntry
             while (entry != null) {
                 val name = entry.name
                 if (name.startsWith("ppt/slides/slide") && name.endsWith(".xml")) {
-                    // 注意：不能使用 .use {}，否则会关闭底层的 ZipInputStream
-                    val xml = zip.bufferedReader().let { it.readText() }
-                    slidesXml.add(xml)
+                    // 安全地读取当前 ZIP 条目的全部内容
+                    val xmlBytes = java.io.ByteArrayOutputStream()
+                    val buffer = ByteArray(8192)
+                    var len: Int
+                    while (zip.read(buffer).also { len = it } != -1) {
+                        xmlBytes.write(buffer, 0, len)
+                    }
+                    val xml = xmlBytes.toString(Charsets.UTF_8.name())
+                    val text = extractTextFromSlideXml(xml)
+                    if (text.isNotBlank()) {
+                        slides.add(text.trim())
+                    }
                 }
                 zip.closeEntry()
                 entry = zip.nextEntry
             }
             zip.close()
 
-            // 第二遍：从每个 slide XML 中提取文本
-            for (xml in slidesXml) {
-                val text = extractTextFromSlideXml(xml)
-                if (text.isNotBlank()) {
-                    slides.add(text.trim())
-                }
-            }
         } catch (e: Exception) {
             throw PPTXParseException("PPT解析失败: ${e.message}", e)
         }
@@ -51,26 +51,32 @@ object PPTXParser {
     }
 
     /**
-     * 从 slide XML 中提取 <a:t> 标签内的文本
+     * 从 slide XML 中提取所有文本标签内的内容
+     * 支持多种命名空间格式：<a:t>、<a:t xml:space="preserve">
      */
     private fun extractTextFromSlideXml(xml: String): String {
         val result = StringBuilder()
-        var searchFrom = 0
 
+        // 按 <a:t 或 <a:r 或 <p: 提取文本
+        var searchFrom = 0
         while (true) {
-            // 匹配 <a:t> 或 <a:t xml:space="preserve">
+            // 查找 <a:t 或 <a:t xml:space
             val tagStart = xml.indexOf("<a:t", searchFrom)
             if (tagStart == -1) break
 
-            val contentStart = xml.indexOf('>', tagStart) + 1
-            if (contentStart == 0) break
+            val contentStart = xml.indexOf('>', tagStart)
+            if (contentStart == -1) break
 
-            val tagEnd = xml.indexOf("</a:t>", contentStart)
-            if (tagEnd == -1) break
+            val contentEnd = xml.indexOf("</a:t>", contentStart + 1)
+            if (contentEnd == -1) break
 
-            val content = xml.substring(contentStart, tagEnd)
-            result.append(content)
-            searchFrom = tagEnd + 6
+            val content = xml.substring(contentStart + 1, contentEnd)
+            if (content.isNotBlank()) {
+                // 添加空格分隔不同文本块
+                if (result.isNotEmpty() && !result.endsWith(" ")) result.append(' ')
+                result.append(content.trim())
+            }
+            searchFrom = contentEnd + 6
         }
 
         return result.toString()

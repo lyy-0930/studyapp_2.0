@@ -1169,12 +1169,10 @@ app.get('/courses/:id/quiz/result', authenticate, async (req, res) => {
 
         const attempt = attempts[0];
 
-        // 解析学生答案
-        let answers = {};
-        try {
-            answers = JSON.parse(attempt.answers);
-        } catch (e) {
-            answers = {};
+        // 解析学生答案（MySQL JSON 列已自动反序列化为对象，无需再次 JSON.parse）
+        let answers = attempt.answers || {};
+        if (typeof answers === 'string') {
+            try { answers = JSON.parse(answers); } catch (e) { answers = {}; }
         }
 
         // 获取该课程所有已发布题目（含正确答案），让学生能回顾
@@ -1409,6 +1407,248 @@ app.post('/courses/:id/slide-texts', authenticate, requireRole('teacher', 'admin
     }
 });
 
+// 4.8A1 PPTX文件解析 + 保存幻灯片文本接口
+// 路径：POST /courses/:id/parse-pptx
+// 功能：上传PPTX文件，服务端解析提取幻灯片文本并保存（教师/管理员，需课程归属）
+// 使用原始二进制流（raw body），不走 multipart，避免编码问题
+const AdmZip = require('adm-zip');
+app.post('/courses/:id/parse-pptx', authenticate, requireRole('teacher', 'admin'), requireCourseOwnership(db), async (req, res) => {
+    try {
+        const courseId = req.params.id;
+        const chunks = [];
+
+        req.on('data', chunk => chunks.push(chunk));
+        await new Promise((resolve, reject) => {
+            req.on('end', resolve);
+            req.on('error', reject);
+        });
+
+        const buffer = Buffer.concat(chunks);
+        console.log(`📦 PPT上传: 收到 ${buffer.length} 字节`);
+
+        if (buffer.length === 0) {
+            return errorResponse(res, '请上传PPTX文件');
+        }
+
+        // 检查文件头是否像 ZIP (PK\x03\x04)
+        if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4B || buffer[2] !== 0x03 || buffer[3] !== 0x04) {
+            console.error(`❌ 文件头不是ZIP格式: ${buffer.slice(0, 8).toString('hex')}`);
+            return errorResponse(res, '文件格式无效，请确认是 .pptx 文件');
+        }
+
+        // 使用 adm-zip 解析 PPTX
+        const zip = new AdmZip(buffer);
+        const entries = zip.getEntries();
+
+        // 筛选幻灯片文件并排序
+        const slideEntries = entries
+            .filter(e => e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml'))
+            .sort((a, b) => {
+                const na = parseInt(a.entryName.match(/slide(\d+)/)?.[1] || '0');
+                const nb = parseInt(b.entryName.match(/slide(\d+)/)?.[1] || '0');
+                return na - nb;
+            });
+
+        if (slideEntries.length === 0) {
+            return errorResponse(res, '未找到幻灯片内容');
+        }
+
+        // 从每个 slide XML 中提取 <a:t> 标签内的文本
+        const slideTexts = [];
+        for (const entry of slideEntries) {
+            const xml = entry.getData().toString('utf8');
+            const texts = [];
+            const regex = /<a:t[^>]*>([^<]+)<\/a:t>/g;
+            let match;
+            while ((match = regex.exec(xml)) !== null) {
+                const text = match[1].trim();
+                if (text) texts.push(text);
+            }
+            const combined = texts.join(' ');
+            if (combined.trim()) {
+                slideTexts.push(combined.trim());
+            }
+        }
+
+        if (slideTexts.length === 0) {
+            return errorResponse(res, '未能从PPT中提取到文本内容，请确认PPT中包含文字');
+        }
+
+        // 保存到数据库
+        await db.executeQuery('DELETE FROM course_slide_texts WHERE course_id = ?', [courseId]);
+        for (let i = 0; i < slideTexts.length; i++) {
+            await db.executeQuery(
+                'INSERT INTO course_slide_texts (course_id, slide_index, slide_text) VALUES (?, ?, ?)',
+                [courseId, i + 1, slideTexts[i]]
+            );
+        }
+
+        console.log(`✅ PPTX解析成功: 课程${courseId}, ${slideTexts.length}页幻灯片`);
+        successResponse(res, {
+            courseId: parseInt(courseId),
+            slideCount: slideTexts.length,
+            slideTexts: slideTexts
+        }, `PPT解析成功，提取了${slideTexts.length}页幻灯片文本`);
+    } catch (error) {
+        console.error('❌ PPTX解析错误:', error);
+        if (error.message?.includes('invalid zip') || error.message?.includes('END header')) {
+            return errorResponse(res, 'PPTX文件格式无效，请确认是有效的 .pptx 文件');
+        }
+        errorResponse(res, `PPT解析失败: ${error.message}`, 500);
+    }
+});
+
+// 4.8A2 解析已上传的PPT文件（通过资料上传接口上传的PPT）
+// 路径：POST /courses/:id/parse-uploaded-pptx
+// 功能：查找课程最新上传的PPT资料，解析提取幻灯片文本（教师/管理员，需课程归属）
+app.post('/courses/:id/parse-uploaded-pptx', authenticate, requireRole('teacher', 'admin'), requireCourseOwnership(db), async (req, res) => {
+    try {
+        const courseId = req.params.id;
+
+        // 查找该课程最新上传的PPTX文件
+        // 优先从磁盘目录查找（比数据库更准确，因为上传后可能被转换为PDF）
+        let filePath = null;
+        const files = fs.readdirSync(materialsDir)
+            .filter(f => f.endsWith('.pptx') && f.includes(`course_${courseId}`))
+            .map(f => ({ name: f, mtime: fs.statSync(path.join(materialsDir, f)).mtimeMs }))
+            .sort((a, b) => b.mtime - a.mtime);
+
+        if (files.length > 0) {
+            filePath = path.join(materialsDir, files[0].name);
+            console.log(`📁 解析PPTX文件: ${files[0].name} (${(fs.statSync(filePath).size / 1024).toFixed(0)}KB)`);
+        }
+
+        // 磁盘找不到，再查数据库
+        if (!filePath) {
+            const materials = await db.executeQuery(
+                `SELECT id, file_name, file_url FROM course_materials
+                 WHERE course_id = ? AND (file_name LIKE '%.pptx' OR file_name LIKE '%.ppt')
+                 ORDER BY id DESC LIMIT 1`,
+                [courseId]
+            );
+            if (materials.length > 0) {
+                const dbPath = path.join(__dirname, materials[0].file_url);
+                if (fs.existsSync(dbPath)) filePath = dbPath;
+            }
+        }
+
+        if (!filePath) {
+            return errorResponse(res, '未找到PPTX源文件，请重新上传PPT');
+        }
+
+        // 使用 adm-zip 解析 PPTX
+        const zip = new AdmZip(filePath);
+        const entries = zip.getEntries();
+
+        const slideEntries = entries
+            .filter(e => e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml'))
+            .sort((a, b) => {
+                const na = parseInt(a.entryName.match(/slide(\d+)/)?.[1] || '0');
+                const nb = parseInt(b.entryName.match(/slide(\d+)/)?.[1] || '0');
+                return na - nb;
+            });
+
+        if (slideEntries.length === 0) {
+            return errorResponse(res, '未找到幻灯片内容');
+        }
+
+        const slideTexts = [];
+        for (const entry of slideEntries) {
+            const xml = entry.getData().toString('utf8');
+            const texts = [];
+            const regex = /<a:t[^>]*>([^<]+)<\/a:t>/g;
+            let match;
+            while ((match = regex.exec(xml)) !== null) {
+                const text = match[1].trim();
+                if (text) texts.push(text);
+            }
+            const combined = texts.join(' ');
+            if (combined.trim()) {
+                slideTexts.push(combined.trim());
+            }
+        }
+
+        if (slideTexts.length === 0) {
+            // XML 提取失败 → 尝试 OCR（处理图片型PPT）
+            console.log('🔄 XML未提取到文本，尝试OCR...');
+            try {
+                const { createWorker } = require('tesseract.js');
+                const worker = await createWorker('chi_sim+eng');
+                // 提取 PPTX 中的所有图片进行 OCR
+                const zip = new AdmZip(filePath);
+                const imgEntries = zip.getEntries().filter(e =>
+                    e.entryName.startsWith('ppt/media/') &&
+                    (e.entryName.endsWith('.png') || e.entryName.endsWith('.jpg') || e.entryName.endsWith('.jpeg'))
+                );
+                for (const imgEntry of imgEntries) {
+                    const imgBuffer = imgEntry.getData();
+                    const { data } = await worker.recognize(imgBuffer);
+                    const text = data.text.trim();
+                    if (text) slideTexts.push(text);
+                }
+                await worker.terminate();
+                console.log(`📸 OCR完成，提取了 ${slideTexts.length} 张图片的文字`);
+            } catch (ocrError) {
+                console.warn('⚠️ OCR失败:', ocrError.message);
+            }
+        }
+
+        // 如果提取到了文字，生成 HTML 预览文件
+        if (slideTexts.length > 0) {
+            try {
+                const htmlDir = path.join(__dirname, 'uploads', 'ppt_html');
+                if (!fs.existsSync(htmlDir)) fs.mkdirSync(htmlDir, { recursive: true });
+                const htmlName = `ppt_${courseId}_${Date.now()}.html`;
+                const htmlPath = path.join(htmlDir, htmlName);
+                const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>PPT预览</title>
+<style>body{font-family:sans-serif;max-width:800px;margin:auto;padding:20px}
+.slide{border:1px solid #ddd;border-radius:8px;padding:20px;margin:20px 0;background:#fff}
+h2{color:#333;margin-top:0}p{font-size:15px;line-height:1.6;color:#555}</style></head><body>
+<h1>📄 PPT幻灯片内容</h1><p>共 ${slideTexts.length} 页</p>
+${slideTexts.map((t, i) => `<div class="slide"><h2>第 ${i+1} 页</h2><p>${t.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</p></div>`).join('')}
+</body></html>`;
+                fs.writeFileSync(htmlPath, htmlContent);
+                const htmlUrl = `/uploads/ppt_html/${htmlName}`;
+                console.log(`✅ PPT HTML预览已生成: ${htmlUrl}`);
+
+                // 保存 HTML 链接到数据库（作为资料）
+                await db.executeQuery(
+                    'INSERT INTO course_materials (course_id, file_name, file_url, file_type, file_size) VALUES (?, ?, ?, ?, ?)',
+                    [courseId, `PPT预览_${path.basename(material.file_name || 'slide')}.html`, htmlUrl, 'html', htmlContent.length]
+                );
+            } catch (htmlError) {
+                console.warn('⚠️ 生成HTML预览失败:', htmlError.message);
+            }
+        }
+
+        if (slideTexts.length === 0) {
+            return errorResponse(res, '未能从PPT中提取到文本内容，请确认PPT中包含文字');
+        }
+
+        // 保存到数据库
+        await db.executeQuery('DELETE FROM course_slide_texts WHERE course_id = ?', [courseId]);
+        for (let i = 0; i < slideTexts.length; i++) {
+            await db.executeQuery(
+                'INSERT INTO course_slide_texts (course_id, slide_index, slide_text) VALUES (?, ?, ?)',
+                [courseId, i + 1, slideTexts[i]]
+            );
+        }
+
+        console.log(`✅ PPTX解析成功(已上传文件): 课程${courseId}, ${slideTexts.length}页`);
+        successResponse(res, {
+            courseId: parseInt(courseId),
+            slideCount: slideTexts.length,
+            slideTexts: slideTexts
+        }, `PPT解析成功，提取了${slideTexts.length}页幻灯片文本`);
+    } catch (error) {
+        console.error('❌ PPTX解析错误:', error);
+        if (error.message?.includes('invalid zip') || error.message?.includes('END header')) {
+            return errorResponse(res, 'PPT文件格式无效');
+        }
+        errorResponse(res, `PPT解析失败: ${error.message}`, 500);
+    }
+});
+
 // 4.8B AI生成题目接口
 // 路径：POST /courses/:id/questions/ai-generate
 // 功能：调用DeepSeek AI根据幻灯片文本生成选择题（教师/管理员，需课程归属）
@@ -1445,14 +1685,25 @@ app.post('/courses/:id/questions/ai-generate', authenticate, requireRole('teache
 
         // 构建AI请求
         const joinedText = slideTexts.join('\n\n---\n\n').slice(0, 80000);
-        const prompt = `根据以下课程幻灯片内容，生成${count}道中文选择题。每道题必须包含4个选项和正确答案。
 
-必须返回严格的JSON格式，不要包含其他文字：
-{"questions": [{"question_text": "题目内容", "options": ["选项A", "选项B", "选项C", "选项D"], "correct_answer": "A"}]}
+        const prompt = `根据以下课程幻灯片内容，生成${count}道中文选择题。
 
-注意：options中不要带"A. "等前缀，只写纯文本选项。correct_answer只写字母（A/B/C/D）。
+## 出题要求：
+1. 每道题必须包含：题目内容、4个选项、正确答案
+2. 题目必须严格基于幻灯片中的知识点，不要编造不相关的内容
+3. 答案必须唯一且明确
+4. 干扰项必须有迷惑性，但不要混淆学生
 
-幻灯片内容：
+## 输出格式（严格 JSON，不要其他文字）：
+{"questions": [
+  {"question_text": "题目内容", "options": ["A选项", "B选项", "C选项", "D选项"], "correct_answer": "A"}
+]}
+
+## 注意事项：
+- correct_answer只写大写字母A/B/C/D
+- options中不要带"A. "等字母前缀，只写纯文本选项
+
+## 幻灯片内容：
 ${joinedText}`;
 
         console.log(`🤖 正在调用DeepSeek AI为课程${courseId}生成${count}道题目...`);
@@ -1460,11 +1711,11 @@ ${joinedText}`;
         const response = await deepseek.chat.completions.create({
             model: 'deepseek-chat',
             messages: [
-                { role: 'system', content: '你是一个教育测验生成器。根据课程材料生成高质量的中文选择题。确保正确答案确实正确，干扰项合理且有迷惑性。返回严格的JSON格式。' },
+                { role: 'system', content: '你是一个专业的课程出题教师。必须根据提供的幻灯片内容出题，每道题必须包含question_text(题目)、options(4个选项)、correct_answer(正确答案字母)。返回严格的JSON格式，不要包含其他文字。' },
                 { role: 'user', content: prompt }
             ],
             max_tokens: 4096,
-            temperature: 0.7
+            temperature: 0.3
         });
 
         const content = response.choices[0].message.content;
@@ -1490,7 +1741,14 @@ ${joinedText}`;
             }
         }
 
-        const questions = parsed.questions || [];
+        let questions = parsed.questions || [];
+        if (!questions || questions.length === 0) {
+            // 尝试查找其他可能的字段名
+            const altQuestions = parsed.questions_list || parsed.data || parsed.quiz || [];
+            if (Array.isArray(altQuestions) && altQuestions.length > 0) {
+                questions = altQuestions;
+            }
+        }
         if (questions.length === 0) {
             return errorResponse(res, 'AI生成的题目为空，请重试');
         }
@@ -1498,16 +1756,20 @@ ${joinedText}`;
         // 验证并插入题目
         let insertedCount = 0;
         for (const q of questions) {
-            if (!q.question_text || !q.options || !Array.isArray(q.options) || q.options.length < 2 || !q.correct_answer) {
-                console.warn('⚠️  跳过无效题目:', q.question_text);
+            // 兼容多种字段名
+            const questionText = q.question_text || q.question || q.title || q.questionText || '';
+            const options = q.options || q.choices || q.option_list || [];
+            const correctAnswer = q.correct_answer || q.answer || q.correctAnswer || q.correct || '';
+
+            if (!questionText || !Array.isArray(options) || options.length < 2 || !correctAnswer) {
+                console.warn('⚠️  跳过无效题目:', questionText, JSON.stringify(q).substring(0, 100));
                 continue;
             }
-            const optionsJson = JSON.stringify(q.options);
-            // 标准化 correct_answer：兼容 AI 可能返回 "A. 选项A" 格式
-            const normalizedAnswer = normalizeLetter(q.correct_answer);
+            const optionsJson = JSON.stringify(options);
+            const normalizedAnswer = normalizeLetter(correctAnswer);
             await db.executeQuery(
                 'INSERT INTO questions (course_id, question_text, options, correct_answer, status, source) VALUES (?, ?, ?, ?, ?, ?)',
-                [courseId, q.question_text, optionsJson, normalizedAnswer, 'draft', 'ai']
+                [courseId, questionText, optionsJson, normalizedAnswer, 'draft', 'ai']
             );
             insertedCount++;
         }
@@ -1680,7 +1942,7 @@ app.post('/courses/:courseId/questions/manual', authenticate, requireRole('teach
 // 4.7D 获取课程资料接口
 // 路径：GET /courses/:id/materials
 // 功能：获取指定课程的所有学习资料（教师/管理员，需课程归属）
-app.get('/courses/:id/materials', authenticate, requireRole('teacher', 'admin'), requireCourseOwnership(db), async (req, res) => {
+app.get('/courses/:id/materials', authenticate, async (req, res) => {
     try {
         const courseId = req.params.id;
         const materials = await db.executeQuery(
@@ -1724,6 +1986,10 @@ app.post('/courses/:id/materials', authenticate, requireRole('teacher', 'admin')
         // PPT/PPTX → PDF 自动转换
         const pptExts = ['ppt', 'pptx'];
         if (pptExts.includes(finalFileType)) {
+            // 保存原始PPTX文件路径（LibreOffice可能会删除源文件）
+            const originalPptxPath = req.file.path;
+            const pptxDir = path.dirname(originalPptxPath);
+            const pptxBaseName = path.basename(originalPptxPath);
             try {
                 const inputPath = req.file.path;
                 const outputFileName = path.basename(req.file.filename, path.extname(req.file.filename)) + '.pdf';
@@ -1765,8 +2031,7 @@ app.post('/courses/:id/materials', authenticate, requireRole('teacher', 'admin')
                         finalFileSize = pdfStat.size;
                         finalFileName = originalNameNoExt + '.pdf';
 
-                        // 删除原始PPT文件
-                        try { fs.unlinkSync(inputPath); } catch (_) {}
+                        // 保留原始PPT文件（用于后续解析提取文字）
                         console.log(`✅ PPT转换PDF成功: ${outputFileName}`);
                     }
                 } else {

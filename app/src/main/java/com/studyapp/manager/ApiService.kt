@@ -697,43 +697,45 @@ class ApiService private constructor(val context: Context) {
      * 发送HTTP POST multipart/form-data 请求（文件上传，自动携带令牌）
      */
     private fun httpPostMultipart(fullUrl: String, fields: Map<String, String>, fileField: String, fileName: String, fileBytes: ByteArray, fileMimeType: String): String {
-        val boundary = "Boundary_${System.currentTimeMillis()}"
-        val lineEnd = "\r\n"
-        val twoHyphens = "--"
-        val url = URL(fullUrl)
-        val conn = url.openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.doOutput = true
-        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-        conn.connectTimeout = 30000
-        conn.readTimeout = 30000
-        addAuthHeader(conn, context)
-        try {
-            val out = conn.outputStream
-            // 添加文本字段
-            for ((key, value) in fields) {
+        fun doMultipart(tokenOk: Boolean): String {
+            val boundary = "Boundary_${System.currentTimeMillis()}"
+            val lineEnd = "\r\n"
+            val twoHyphens = "--"
+            val url = URL(fullUrl)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            conn.connectTimeout = 30000
+            conn.readTimeout = 30000
+            addAuthHeader(conn, context)
+            try {
+                val out = conn.outputStream
+                for ((key, value) in fields) {
+                    out.write("$twoHyphens$boundary$lineEnd".toByteArray())
+                    out.write("Content-Disposition: form-data; name=\"$key\"$lineEnd$lineEnd".toByteArray())
+                    out.write("$value$lineEnd".toByteArray())
+                }
                 out.write("$twoHyphens$boundary$lineEnd".toByteArray())
-                out.write("Content-Disposition: form-data; name=\"$key\"$lineEnd$lineEnd".toByteArray())
-                out.write("$value$lineEnd".toByteArray())
-            }
-            // 添加文件字段
-            out.write("$twoHyphens$boundary$lineEnd".toByteArray())
-            out.write("Content-Disposition: form-data; name=\"$fileField\"; filename=\"$fileName\"$lineEnd".toByteArray())
-            out.write("Content-Type: $fileMimeType$lineEnd$lineEnd".toByteArray())
-            out.write(fileBytes)
-            out.write(lineEnd.toByteArray())
-            out.write("$twoHyphens$boundary$twoHyphens$lineEnd".toByteArray())
-            out.flush()
-            out.close()
+                out.write("Content-Disposition: form-data; name=\"$fileField\"; filename=\"$fileName\"$lineEnd".toByteArray())
+                out.write("Content-Type: $fileMimeType$lineEnd$lineEnd".toByteArray())
+                out.write(fileBytes)
+                out.write(lineEnd.toByteArray())
+                out.write("$twoHyphens$boundary$twoHyphens$lineEnd".toByteArray())
+                out.flush()
+                out.close()
 
-            val code = conn.responseCode
-            if (code == HttpURLConnection.HTTP_OK || code == HttpURLConnection.HTTP_CREATED) {
-                return conn.inputStream.bufferedReader().readText()
-            }
-            throw IOException("HTTP $code")
-        } finally {
-            conn.disconnect()
+                val code = conn.responseCode
+                if (code == HttpURLConnection.HTTP_OK || code == HttpURLConnection.HTTP_CREATED) {
+                    return conn.inputStream.bufferedReader().readText()
+                }
+                if (code == 401 && tokenOk && tryRefreshToken()) {
+                    return doMultipart(false) // 重试一次
+                }
+                throw IOException("HTTP $code")
+            } finally { conn.disconnect() }
         }
+        return doMultipart(true)
     }
 
     // ==================== JSON解析辅助 ====================
@@ -1223,9 +1225,9 @@ class ApiService private constructor(val context: Context) {
                             }
                             list.add(com.studyapp.model.Question(
                                 id = q.optInt("id", 0),
-                                questionText = q.optString("questionText", ""),
+                                questionText = q.optString("question_text", "").takeIf { it.isNotEmpty() } ?: q.optString("questionText", ""),
                                 options = opts,
-                                correctAnswer = q.optString("correctAnswer", ""),
+                                correctAnswer = q.optString("correct_answer", "").takeIf { it.isNotEmpty() } ?: q.optString("correctAnswer", ""),
                                 status = q.optString("status", "published")
                             ))
                         }
@@ -1250,6 +1252,69 @@ class ApiService private constructor(val context: Context) {
             } catch (e: Exception) {
                 Result.failure(e)
             }
+        }
+    }
+
+    suspend fun parseUploadedPpt(courseId: Int): Result<com.studyapp.model.SlideParseResult> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpPost("$BASE_URL/courses/$courseId/parse-uploaded-pptx", buildJson())
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val data = root.optJSONObject("data")
+                    val count = data?.optInt("slideCount", 0) ?: 0
+                    val texts = mutableListOf<String>()
+                    val arr = data?.optJSONArray("slideTexts")
+                    if (arr != null) for (i in 0 until arr.length()) texts.add(arr.getString(i))
+                    Result.success(com.studyapp.model.SlideParseResult(count, texts))
+                } else {
+                    Result.failure(IOException(root.optString("message", "解析失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun uploadAndParsePptBytes(courseId: Int, pptBytes: ByteArray): Result<com.studyapp.model.SlideParseResult> {
+        fun doUpload(): Result<com.studyapp.model.SlideParseResult> {
+            val url = URL("$BASE_URL/courses/$courseId/parse-pptx")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/octet-stream")
+            conn.setFixedLengthStreamingMode(pptBytes.size)
+            conn.connectTimeout = 60000
+            conn.readTimeout = 60000
+            addAuthHeader(conn, context)
+            try {
+                conn.outputStream.write(pptBytes)
+                conn.outputStream.flush()
+                val code = conn.responseCode
+                if (code == HttpURLConnection.HTTP_OK) {
+                    val responseBody = conn.inputStream.bufferedReader().readText()
+                    val root = JSONObject(responseBody)
+                    if (root.optBoolean("success", false)) {
+                        val data = root.optJSONObject("data")
+                        val count = data?.optInt("slideCount", 0) ?: 0
+                        val texts = mutableListOf<String>()
+                        val arr = data?.optJSONArray("slideTexts")
+                        if (arr != null) for (i in 0 until arr.length()) texts.add(arr.getString(i))
+                        return Result.success(com.studyapp.model.SlideParseResult(count, texts))
+                    } else {
+                        return Result.failure(IOException(root.optString("message", "解析失败")))
+                    }
+                } else if (code == 401 && tryRefreshToken()) {
+                    return doUpload() // 刷新后重试
+                } else {
+                    val errBody = try { conn.errorStream?.bufferedReader()?.readText() ?: "" } catch (_: Exception) { "" }
+                    val msg = try { JSONObject(errBody).optString("message", "HTTP $code") } catch (_: Exception) { "HTTP $code" }
+                    return Result.failure(IOException(msg))
+                }
+            } finally { conn.disconnect() }
+        }
+        return withContext(Dispatchers.IO) {
+            try { doUpload() } catch (e: Exception) { Result.failure(e) }
         }
     }
 
@@ -1375,9 +1440,11 @@ class ApiService private constructor(val context: Context) {
                             list.add(CourseMaterial(
                                 id = m.optInt("id", 0),
                                 courseId = m.optInt("courseId", 0),
-                                fileName = m.optString("fileName", ""),
-                                fileUrl = m.optString("fileUrl", ""),
-                                uploadedAt = m.optString("uploadedAt", "")
+                                fileName = m.optString("file_name", "").takeIf { it.isNotEmpty() } ?: m.optString("fileName", ""),
+                                fileUrl = m.optString("file_url", "").takeIf { it.isNotEmpty() } ?: m.optString("fileUrl", ""),
+                                fileType = if (m.has("file_type")) m.optString("file_type", null) else m.optString("fileType", null),
+                                fileSize = if (m.has("file_size")) m.optLong("file_size", 0) else m.optLong("fileSize", 0),
+                                uploadedAt = m.optString("uploaded_at", "").takeIf { it.isNotEmpty() } ?: m.optString("uploadedAt", "")
                             ))
                         }
                     }
@@ -2025,9 +2092,13 @@ class ApiService private constructor(val context: Context) {
     suspend fun submitQuiz(courseId: Int, studentId: Int, answers: Map<String, String>): Result<QuizResult> {
         return withContext(Dispatchers.IO) {
             try {
+                // 构建 answers 为 JSON 对象（不是字符串）
                 val answersObj = JSONObject()
                 for ((k, v) in answers) answersObj.put(k, v)
-                val body = buildJson("studentId" to studentId, "answers" to answersObj.toString())
+                // 直接使用 JSONObject 作为 answers 的值
+                val rootObj = JSONObject()
+                rootObj.put("answers", answersObj)
+                val body = rootObj.toString()
                 val responseBody = httpPost("$BASE_URL/courses/$courseId/quiz/submit", body)
                 val root = JSONObject(responseBody)
                 if (root.optBoolean("success", false)) {
@@ -2037,7 +2108,7 @@ class ApiService private constructor(val context: Context) {
                             score = dataObj.optInt("score", 0),
                             totalQuestions = dataObj.optInt("totalQuestions", dataObj.optInt("total", 0)),
                             correctCount = dataObj.optInt("correctCount", 0),
-                            submittedAt = dataObj.optStringOrNull("submittedAt"),
+                            submittedAt = dataObj.optString("submittedAt", null) ?: dataObj.optString("submitted_at", null),
                             questions = null
                         ))
                     } else {
@@ -2055,17 +2126,37 @@ class ApiService private constructor(val context: Context) {
     suspend fun getQuizResult(courseId: Int, studentId: Int): Result<QuizResult?> {
         return withContext(Dispatchers.IO) {
             try {
-                val responseBody = httpGet("$BASE_URL/courses/$courseId/quiz/result?studentId=$studentId")
+                val responseBody = httpGet("$BASE_URL/courses/$courseId/quiz/result")
                 val root = JSONObject(responseBody)
                 if (root.optBoolean("success", false)) {
                     val dataObj = root.optJSONObject("data")
                     if (dataObj != null) {
+                        val questionsList = mutableListOf<Question>()
+                        val qArray = dataObj.optJSONArray("questions")
+                        if (qArray != null) {
+                            for (i in 0 until qArray.length()) {
+                                val q = qArray.getJSONObject(i)
+                                val opts = mutableListOf<String>()
+                                val optsArray = q.optJSONArray("options")
+                                if (optsArray != null) {
+                                    for (j in 0 until optsArray.length()) opts.add(optsArray.getString(j))
+                                }
+                                questionsList.add(Question(
+                                    id = q.optInt("id", 0),
+                                    questionText = q.optString("question_text", "").takeIf { it.isNotEmpty() } ?: q.optString("questionText", ""),
+                                    options = opts,
+                                    correctAnswer = q.optString("correct_answer", "").takeIf { it.isNotEmpty() } ?: q.optString("correctAnswer", ""),
+                                    studentAnswer = q.optString("student_answer", null) ?: q.optString("studentAnswer", null),
+                                    isCorrect = q.optBoolean("is_correct", false)
+                                ))
+                            }
+                        }
                         Result.success(QuizResult(
                             score = dataObj.optInt("score", 0),
                             totalQuestions = dataObj.optInt("totalQuestions", dataObj.optInt("total", 0)),
                             correctCount = dataObj.optInt("correctCount", 0),
-                            submittedAt = dataObj.optStringOrNull("submittedAt"),
-                            questions = null
+                            submittedAt = dataObj.optString("submitted_at", "").takeIf { it.isNotEmpty() } ?: dataObj.optString("submittedAt", null),
+                            questions = questionsList
                         ))
                     } else {
                         Result.success(null)
