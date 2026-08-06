@@ -226,6 +226,52 @@ function requireCourseOwnership(db) {
     };
 }
 
+/**
+ * 合集归属校验中间件工厂
+ * 验证当前教师是否为合集的创建者（管理员可以操作任何合集）
+ * 需要在 authenticate + requireRole('teacher', 'admin') 之后使用
+ *
+ * @param {function} db - 数据库查询函数
+ */
+function requireCollectionOwnership(db) {
+    return async (req, res, next) => {
+        try {
+            if (!req.user) {
+                return authError(res, '未认证', 401);
+            }
+
+            // 管理员可以操作任何合集
+            if (req.user.role === 'admin') {
+                return next();
+            }
+
+            const collectionId = req.params.id;
+            if (!collectionId) {
+                return authError(res, '缺少合集 ID', 400);
+            }
+
+            const collections = await db.executeQuery(
+                'SELECT teacher_id FROM collections WHERE id = ?',
+                [collectionId]
+            );
+
+            if (collections.length === 0) {
+                return authError(res, '合集不存在', 404);
+            }
+
+            if (Number(collections[0].teacher_id) !== Number(req.user.id)) {
+                return authError(res, '只能操作自己的合集', 403);
+            }
+
+            req.collection = collections[0]; // 挂载合集信息供后续使用
+            next();
+        } catch (error) {
+            console.error('合集归属校验错误:', error);
+            return authError(res, '校验合集归属失败', 500);
+        }
+    };
+}
+
 module.exports = {
     generateAccessToken,
     generateRefreshToken,
@@ -234,5 +280,6 @@ module.exports = {
     optionalAuth,
     requireRole,
     requireOwnership,
-    requireCourseOwnership
+    requireCourseOwnership,
+    requireCollectionOwnership
 };

@@ -65,6 +65,18 @@
             android:visibility="gone"
             android:layout_marginTop="4dp" />
 
+        <!-- 题目解析（答题回顾） -->
+        <TextView
+            android:id="@+id/quizExplanationText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="13sp"
+            android:textColor="#8A6D3B"
+            android:visibility="gone"
+            android:layout_marginTop="6dp"
+            android:lineSpacingExtra="2dp" />
+
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>

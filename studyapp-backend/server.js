@@ -20,7 +20,7 @@ const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-const { generateAccessToken, generateRefreshToken, refreshTokens, authenticate, optionalAuth, requireRole, requireOwnership, requireCourseOwnership } = require('./middleware/auth');
+const { generateAccessToken, generateRefreshToken, refreshTokens, authenticate, optionalAuth, requireRole, requireOwnership, requireCourseOwnership, requireCollectionOwnership } = require('./middleware/auth');
 const { createAuditLogger, auditSuccess } = require('./middleware/audit');
 const { trackLoginFailure, clearLoginAttempts, checkLoginLock, rateLimit, loginRateLimit, adminRateLimit, checkIdempotency } = require('./middleware/rateLimit');
 const OpenAI = require('openai');
@@ -904,11 +904,12 @@ app.get('/courses', async (req, res) => {
             SELECT c.*, cat.name as category_name
             FROM courses c
             LEFT JOIN categories cat ON c.category_id = cat.id
+            WHERE COALESCE(c.collection_only, 0) = 0
         `;
         const params = [];
 
         if (teacherId) {
-            sql += ' WHERE c.teacher_id = ?';
+            sql += ' AND c.teacher_id = ?';
             params.push(teacherId);
         }
 
@@ -936,7 +937,7 @@ app.get('/getCourses', authenticate, async (req, res) => {
             LEFT JOIN categories cat ON c.category_id = cat.id
             JOIN course_enrollments ce ON c.id = ce.course_id
             LEFT JOIN study_records sr ON c.id = sr.course_id AND ce.student_id = sr.student_id
-            WHERE ce.student_id = ?
+            WHERE ce.student_id = ? AND COALESCE(c.collection_only, 0) = 0
         `;
         const courses = await db.executeQuery(sql, [userId]);
 
@@ -970,11 +971,16 @@ app.get('/getCourses', authenticate, async (req, res) => {
 // 安全：teacherId 从认证令牌获取，不接受客户端传入
 app.post('/courses', authenticate, requireRole('teacher', 'admin'), async (req, res) => {
     try {
-        const { name, description, credit = 2, videoUrl, imageUrl, categoryId } = req.body;
+        const { name, description, credit = 2, videoUrl, imageUrl, categoryId, collectionIds, collectionOnly } = req.body;
         const teacherId = req.user.id;
 
         if (!name) {
             return errorResponse(res, '课程名称不能为空');
+        }
+
+        // 仅合集可见的课程必须至少属于一个合集，否则会被隐藏且无法访问
+        if (collectionOnly && (!Array.isArray(collectionIds) || collectionIds.length === 0)) {
+            return errorResponse(res, '合集专属课程必须选择所属合集');
         }
 
         // 从数据库获取教师姓名
@@ -990,19 +996,403 @@ app.post('/courses', authenticate, requireRole('teacher', 'admin'), async (req, 
         const teacherName = teacherCheck[0].username;
 
         const sql = `
-            INSERT INTO courses (name, description, teacher_id, teacher_name, credit, video_url, image_url, category_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO courses (name, description, teacher_id, teacher_name, credit, video_url, image_url, category_id, collection_only)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        const result = await db.executeQuery(sql, [name, description || null, teacherId, teacherName, credit, videoUrl || null, imageUrl || null, categoryId || null]);
+        const result = await db.executeQuery(sql, [name, description || null, teacherId, teacherName, credit, videoUrl || null, imageUrl || null, categoryId || null, collectionOnly ? 1 : 0]);
+
+        const courseId = result.insertId;
+
+        // 加入合集（多对多）：教师只能加入自己的合集，管理员可加入任意合集
+        if (Array.isArray(collectionIds) && collectionIds.length > 0) {
+            for (const cid of collectionIds) {
+                if (!cid) continue;
+                const colCheck = await db.executeQuery(
+                    'SELECT id, teacher_id FROM collections WHERE id = ?',
+                    [cid]
+                );
+                if (colCheck.length === 0) continue;
+                if (req.user.role !== 'admin' && Number(colCheck[0].teacher_id) !== Number(teacherId)) continue;
+                try {
+                    await db.executeQuery(
+                        'INSERT INTO collection_courses (collection_id, course_id, sort_order) VALUES (?, ?, ?)',
+                        [cid, courseId, 1]
+                    );
+                } catch (e) {
+                    // 重复加入忽略
+                    if (e.code !== 'ER_DUP_ENTRY') console.warn('⚠️  加入合集失败:', e.message);
+                }
+            }
+        }
 
         successResponse(res, {
-            courseId: result.insertId,
+            courseId: courseId,
             name: name,
             teacherName: teacherName
         }, '课程创建成功');
     } catch (error) {
         console.error('创建课程错误:', error);
         errorResponse(res, '创建课程失败', 500);
+    }
+});
+
+// ============================================================
+// 4.7A 合集（Collection）管理 API
+// 合集：教师自建，收录多门课程；课程↔合集为多对多
+// ============================================================
+
+// 4.7A.1 获取所有合集（公开；登录时附带学生是否已选）
+// 路径：GET /collections
+app.get('/collections', optionalAuth, async (req, res) => {
+    try {
+        const sql = `
+            SELECT col.*, COUNT(cc.id) as course_count, cat.name as category_name
+            FROM collections col
+            LEFT JOIN collection_courses cc ON col.id = cc.collection_id
+            LEFT JOIN categories cat ON col.category_id = cat.id
+            GROUP BY col.id
+            ORDER BY col.created_at DESC
+        `;
+        const collections = await db.executeQuery(sql);
+
+        // 登录状态下附带学生是否已选该合集
+        if (req.user) {
+            const enrolled = await db.executeQuery(
+                'SELECT collection_id FROM collection_enrollments WHERE student_id = ?',
+                [req.user.id]
+            );
+            const enrolledSet = new Set(enrolled.map(r => r.collection_id));
+            for (const c of collections) {
+                c.is_enrolled = enrolledSet.has(c.id);
+            }
+        }
+
+        successResponse(res, collections, '获取合集列表成功');
+    } catch (error) {
+        console.error('获取合集列表错误:', error);
+        errorResponse(res, '获取合集列表失败', 500);
+    }
+});
+
+// 4.7A.2 获取我的合集（教师，上传页多选用）
+// 路径：GET /collections/mine
+app.get('/collections/mine', authenticate, requireRole('teacher', 'admin'), async (req, res) => {
+    try {
+        const sql = `
+            SELECT col.*, COUNT(cc.id) as course_count, cat.name as category_name
+            FROM collections col
+            LEFT JOIN collection_courses cc ON col.id = cc.collection_id
+            LEFT JOIN categories cat ON col.category_id = cat.id
+            WHERE col.teacher_id = ?
+            GROUP BY col.id
+            ORDER BY col.created_at DESC
+        `;
+        const collections = await db.executeQuery(sql, [req.user.id]);
+        successResponse(res, collections, '获取我的合集成功');
+    } catch (error) {
+        console.error('获取我的合集错误:', error);
+        errorResponse(res, '获取我的合集失败', 500);
+    }
+});
+
+// 4.7A.2B 获取学生已选合集（我的课程展示用）
+// 路径：GET /collections/enrolled
+app.get('/collections/enrolled', authenticate, async (req, res) => {
+    try {
+        const sql = `
+            SELECT col.*, COUNT(cc.id) as course_count, cat.name as category_name
+            FROM collection_enrollments ce
+            JOIN collections col ON ce.collection_id = col.id
+            LEFT JOIN collection_courses cc ON col.id = cc.collection_id
+            LEFT JOIN categories cat ON col.category_id = cat.id
+            WHERE ce.student_id = ?
+            GROUP BY col.id
+            ORDER BY MAX(ce.created_at) DESC
+        `;
+        const collections = await db.executeQuery(sql, [req.user.id]);
+        for (const c of collections) {
+            c.is_enrolled = true;
+        }
+        successResponse(res, collections, '获取已选合集成功');
+    } catch (error) {
+        console.error('获取已选合集错误:', error);
+        errorResponse(res, '获取已选合集失败', 500);
+    }
+});
+
+// 4.7A.2C 学生选合集（幂等）
+// 路径：POST /collections/:id/enroll
+app.post('/collections/:id/enroll', authenticate, async (req, res) => {
+    try {
+        const collectionId = req.params.id;
+        const studentId = req.user.id;
+
+        const colCheck = await db.executeQuery('SELECT id FROM collections WHERE id = ?', [collectionId]);
+        if (colCheck.length === 0) {
+            return errorResponse(res, '合集不存在', 404);
+        }
+
+        try {
+            await db.executeQuery(
+                'INSERT INTO collection_enrollments (student_id, collection_id) VALUES (?, ?)',
+                [studentId, collectionId]
+            );
+        } catch (e) {
+            if (e.code !== 'ER_DUP_ENTRY') throw e; // 已选则忽略（幂等）
+        }
+
+        successResponse(res, { collectionId: parseInt(collectionId) }, '合集选课成功');
+    } catch (error) {
+        console.error('选合集错误:', error);
+        errorResponse(res, '选合集失败', 500);
+    }
+});
+
+// 4.7A.2D 学生退选合集
+// 路径：DELETE /collections/:id/enroll
+app.delete('/collections/:id/enroll', authenticate, async (req, res) => {
+    try {
+        await db.executeQuery(
+            'DELETE FROM collection_enrollments WHERE student_id = ? AND collection_id = ?',
+            [req.user.id, req.params.id]
+        );
+        successResponse(res, { collectionId: parseInt(req.params.id) }, '已退选合集');
+    } catch (error) {
+        console.error('退选合集错误:', error);
+        errorResponse(res, '退选合集失败', 500);
+    }
+});
+
+// 4.7A.3 创建合集（教师）
+// 路径：POST /collections
+// 请求体：{ name, description?, coverUrl? }
+app.post('/collections', authenticate, requireRole('teacher', 'admin'), async (req, res) => {
+    try {
+        const { name, description, coverUrl, categoryId } = req.body;
+        if (!name || !name.trim()) {
+            return errorResponse(res, '合集名称不能为空');
+        }
+
+        const teacherId = req.user.id;
+        const teacherCheck = await db.executeQuery(
+            'SELECT id, username FROM users WHERE id = ?',
+            [teacherId]
+        );
+        if (teacherCheck.length === 0) {
+            return errorResponse(res, '教师不存在', 404);
+        }
+        const teacherName = teacherCheck[0].username;
+
+        const result = await db.executeQuery(
+            'INSERT INTO collections (name, description, cover_url, category_id, teacher_id, teacher_name) VALUES (?, ?, ?, ?, ?, ?)',
+            [name.trim(), description || null, coverUrl || null, categoryId || null, teacherId, teacherName]
+        );
+
+        successResponse(res, {
+            id: result.insertId,
+            name: name.trim(),
+            description: description || null,
+            coverUrl: coverUrl || null,
+            categoryId: categoryId || null,
+            teacherName: teacherName,
+            courseCount: 0
+        }, '合集创建成功');
+    } catch (error) {
+        console.error('创建合集错误:', error);
+        errorResponse(res, '创建合集失败', 500);
+    }
+});
+
+// 4.7A.4 更新合集（owner/管理员）
+// 路径：PUT /collections/:id
+app.put('/collections/:id', authenticate, requireRole('teacher', 'admin'), requireCollectionOwnership(db), async (req, res) => {
+    try {
+        const { name, description, coverUrl, categoryId } = req.body;
+        const updates = [];
+        const params = [];
+
+        if (name !== undefined) { updates.push('name = ?'); params.push(String(name).trim()); }
+        if (description !== undefined) { updates.push('description = ?'); params.push(description); }
+        if (coverUrl !== undefined) { updates.push('cover_url = ?'); params.push(coverUrl); }
+        if (categoryId !== undefined) { updates.push('category_id = ?'); params.push(categoryId); }
+
+        if (updates.length === 0) {
+            return errorResponse(res, '没有提供要更新的字段');
+        }
+
+        params.push(req.params.id);
+        await db.executeQuery(
+            `UPDATE collections SET ${updates.join(', ')} WHERE id = ?`,
+            params
+        );
+
+        successResponse(res, { id: parseInt(req.params.id) }, '合集更新成功');
+    } catch (error) {
+        console.error('更新合集错误:', error);
+        errorResponse(res, '更新合集失败', 500);
+    }
+});
+
+// 4.7A.5 删除合集（owner/管理员）
+// 路径：DELETE /collections/:id
+app.delete('/collections/:id', authenticate, requireRole('teacher', 'admin'), requireCollectionOwnership(db), async (req, res) => {
+    try {
+        await db.executeQuery('DELETE FROM collections WHERE id = ?', [req.params.id]);
+        successResponse(res, { id: parseInt(req.params.id) }, '合集删除成功');
+    } catch (error) {
+        console.error('删除合集错误:', error);
+        errorResponse(res, '删除合集失败', 500);
+    }
+});
+
+// 4.7A.6 获取合集内课程列表（公开）
+// 路径：GET /collections/:id/courses
+app.get('/collections/:id/courses', async (req, res) => {
+    try {
+        const collectionId = req.params.id;
+        const colCheck = await db.executeQuery('SELECT id FROM collections WHERE id = ?', [collectionId]);
+        if (colCheck.length === 0) {
+            return errorResponse(res, '合集不存在', 404);
+        }
+
+        const sql = `
+            SELECT c.*, cat.name as category_name
+            FROM collection_courses cc
+            JOIN courses c ON cc.course_id = c.id
+            LEFT JOIN categories cat ON c.category_id = cat.id
+            WHERE cc.collection_id = ?
+            ORDER BY cc.sort_order ASC, cc.id ASC
+        `;
+        const courses = await db.executeQuery(sql, [collectionId]);
+        successResponse(res, courses, '获取合集课程成功');
+    } catch (error) {
+        console.error('获取合集课程错误:', error);
+        errorResponse(res, '获取合集课程失败', 500);
+    }
+});
+
+// 4.7A.7 添加课程到合集（owner/管理员；教师只能添加自己的课程）
+// 路径：POST /collections/:id/courses
+// 请求体：{ courseId }
+app.post('/collections/:id/courses', authenticate, requireRole('teacher', 'admin'), requireCollectionOwnership(db), async (req, res) => {
+    try {
+        const collectionId = req.params.id;
+        const { courseId } = req.body;
+        if (!courseId) {
+            return errorResponse(res, '请提供课程ID');
+        }
+
+        // 教师只能添加自己的课程
+        if (req.user.role !== 'admin') {
+            const courseCheck = await db.executeQuery(
+                'SELECT id, teacher_id FROM courses WHERE id = ?',
+                [courseId]
+            );
+            if (courseCheck.length === 0) {
+                return errorResponse(res, '课程不存在', 404);
+            }
+            if (Number(courseCheck[0].teacher_id) !== Number(req.user.id)) {
+                return errorResponse(res, '只能添加自己的课程', 403);
+            }
+        }
+
+        // 重复检查
+        const dup = await db.executeQuery(
+            'SELECT id FROM collection_courses WHERE collection_id = ? AND course_id = ?',
+            [collectionId, courseId]
+        );
+        if (dup.length > 0) {
+            return errorResponse(res, '该课程已在合集中');
+        }
+
+        // 排序值：追加到末尾
+        const maxOrder = await db.executeQuery(
+            'SELECT COALESCE(MAX(sort_order), 0) as m FROM collection_courses WHERE collection_id = ?',
+            [collectionId]
+        );
+        const sortOrder = (maxOrder[0]?.m || 0) + 1;
+
+        await db.executeQuery(
+            'INSERT INTO collection_courses (collection_id, course_id, sort_order) VALUES (?, ?, ?)',
+            [collectionId, courseId, sortOrder]
+        );
+
+        successResponse(res, {
+            collectionId: parseInt(collectionId),
+            courseId: parseInt(courseId)
+        }, '课程已加入合集');
+    } catch (error) {
+        console.error('添加课程到合集错误:', error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return errorResponse(res, '该课程已在合集中');
+        }
+        errorResponse(res, '添加课程失败', 500);
+    }
+});
+
+// 4.7A.8 更新合集内课程排序（owner/管理员）
+// 路径：PUT /collections/:id/courses/:courseId
+// 请求体：{ sortOrder }
+app.put('/collections/:id/courses/:courseId', authenticate, requireRole('teacher', 'admin'), requireCollectionOwnership(db), async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const { sortOrder } = req.body;
+        if (sortOrder === undefined) {
+            return errorResponse(res, '请提供排序值');
+        }
+
+        const result = await db.executeQuery(
+            'UPDATE collection_courses SET sort_order = ? WHERE collection_id = ? AND course_id = ?',
+            [sortOrder, req.params.id, courseId]
+        );
+        if (result.affectedRows === 0) {
+            return errorResponse(res, '该课程不在合集中', 404);
+        }
+
+        successResponse(res, { courseId: parseInt(courseId), sortOrder }, '排序更新成功');
+    } catch (error) {
+        console.error('更新合集课程排序错误:', error);
+        errorResponse(res, '更新排序失败', 500);
+    }
+});
+
+// 4.7A.9 从合集移出课程（owner/管理员）
+// 路径：DELETE /collections/:id/courses/:courseId
+app.delete('/collections/:id/courses/:courseId', authenticate, requireRole('teacher', 'admin'), requireCollectionOwnership(db), async (req, res) => {
+    try {
+        const result = await db.executeQuery(
+            'DELETE FROM collection_courses WHERE collection_id = ? AND course_id = ?',
+            [req.params.id, req.params.courseId]
+        );
+        if (result.affectedRows === 0) {
+            return errorResponse(res, '该课程不在合集中', 404);
+        }
+        successResponse(res, { courseId: parseInt(req.params.courseId) }, '已从合集移出');
+    } catch (error) {
+        console.error('移出合集错误:', error);
+        errorResponse(res, '移出合集失败', 500);
+    }
+});
+
+// 4.7A.10 获取课程所属的合集列表（认证，上传页预勾选用）
+// 路径：GET /courses/:id/collections
+app.get('/courses/:id/collections', authenticate, async (req, res) => {
+    try {
+        const sql = `
+            SELECT col.*, COUNT(cc2.id) as course_count, cat.name as category_name
+            FROM collection_courses cc
+            JOIN collections col ON cc.collection_id = col.id
+            LEFT JOIN collection_courses cc2 ON col.id = cc2.collection_id
+            LEFT JOIN categories cat ON col.category_id = cat.id
+            WHERE cc.course_id = ?
+            GROUP BY col.id
+            ORDER BY col.created_at DESC
+        `;
+        const collections = await db.executeQuery(sql, [req.params.id]);
+        successResponse(res, collections, '获取课程合集成功');
+    } catch (error) {
+        console.error('获取课程合集错误:', error);
+        errorResponse(res, '获取课程合集失败', 500);
     }
 });
 
@@ -1039,6 +1429,7 @@ app.get('/courses/:id/questions', async (req, res) => {
             question_text: q.question_text,
             options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
             correct_answer: q.correct_answer,
+            explanation: q.explanation || null,
             status: q.status || 'published',
             source: q.source || 'ai',
             created_at: q.created_at
@@ -1188,6 +1579,7 @@ app.get('/courses/:id/quiz/result', authenticate, async (req, res) => {
                 question_text: q.question_text,
                 options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
                 correct_answer: normalizeLetter(q.correct_answer),
+                explanation: q.explanation || null,
                 student_answer: studentAnswer,
                 is_correct: studentAnswer !== null && normalizeLetter(studentAnswer) === normalizeLetter(q.correct_answer)
             };
@@ -1689,19 +2081,21 @@ app.post('/courses/:id/questions/ai-generate', authenticate, requireRole('teache
         const prompt = `根据以下课程幻灯片内容，生成${count}道中文选择题。
 
 ## 出题要求：
-1. 每道题必须包含：题目内容、4个选项、正确答案
+1. 每道题必须包含：题目内容、4个选项、正确答案、题目解析
 2. 题目必须严格基于幻灯片中的知识点，不要编造不相关的内容
 3. 答案必须唯一且明确
 4. 干扰项必须有迷惑性，但不要混淆学生
+5. 每道题必须提供解析（explanation），解释为什么选这个答案，帮助学生理解知识点
 
 ## 输出格式（严格 JSON，不要其他文字）：
 {"questions": [
-  {"question_text": "题目内容", "options": ["A选项", "B选项", "C选项", "D选项"], "correct_answer": "A"}
+  {"question_text": "题目内容", "options": ["A选项", "B选项", "C选项", "D选项"], "correct_answer": "A", "explanation": "解析：为什么选A，涉及的知识点说明"}
 ]}
 
 ## 注意事项：
 - correct_answer只写大写字母A/B/C/D
 - options中不要带"A. "等字母前缀，只写纯文本选项
+- explanation 必须是完整的解析，不能为空
 
 ## 幻灯片内容：
 ${joinedText}`;
@@ -1711,7 +2105,7 @@ ${joinedText}`;
         const response = await deepseek.chat.completions.create({
             model: 'deepseek-chat',
             messages: [
-                { role: 'system', content: '你是一个专业的课程出题教师。必须根据提供的幻灯片内容出题，每道题必须包含question_text(题目)、options(4个选项)、correct_answer(正确答案字母)。返回严格的JSON格式，不要包含其他文字。' },
+                { role: 'system', content: '你是一个专业的课程出题教师。必须根据提供的幻灯片内容出题，每道题必须包含question_text(题目)、options(4个选项)、correct_answer(正确答案字母)、explanation(题目解析)。explanation必须为完整的解析，解释为什么选这个答案并说明涉及的知识点，不能为空。返回严格的JSON格式，不要包含其他文字。' },
                 { role: 'user', content: prompt }
             ],
             max_tokens: 4096,
@@ -1760,6 +2154,7 @@ ${joinedText}`;
             const questionText = q.question_text || q.question || q.title || q.questionText || '';
             const options = q.options || q.choices || q.option_list || [];
             const correctAnswer = q.correct_answer || q.answer || q.correctAnswer || q.correct || '';
+            const explanation = q.explanation || q.analysis || q.解析 || '';
 
             if (!questionText || !Array.isArray(options) || options.length < 2 || !correctAnswer) {
                 console.warn('⚠️  跳过无效题目:', questionText, JSON.stringify(q).substring(0, 100));
@@ -1767,9 +2162,13 @@ ${joinedText}`;
             }
             const optionsJson = JSON.stringify(options);
             const normalizedAnswer = normalizeLetter(correctAnswer);
+            // 解析兜底：AI 未返回解析时生成基础解析，保证每道题都有解析
+            const finalExplanation = (explanation && String(explanation).trim().length > 0)
+                ? explanation
+                : `正确答案为 ${normalizedAnswer}。请结合课程内容理解该知识点。`;
             await db.executeQuery(
-                'INSERT INTO questions (course_id, question_text, options, correct_answer, status, source) VALUES (?, ?, ?, ?, ?, ?)',
-                [courseId, questionText, optionsJson, normalizedAnswer, 'draft', 'ai']
+                'INSERT INTO questions (course_id, question_text, options, correct_answer, explanation, status, source) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [courseId, questionText, optionsJson, normalizedAnswer, finalExplanation, 'draft', 'ai']
             );
             insertedCount++;
         }
@@ -1799,7 +2198,7 @@ app.put('/courses/:courseId/questions/:questionId', authenticate, requireRole('t
     try {
         const courseId = req.params.courseId;
         const questionId = req.params.questionId;
-        const { question_text, options, correct_answer, status } = req.body;
+        const { question_text, options, correct_answer, status, explanation } = req.body;
 
         // 验证题目存在且属于该课程
         const existing = await db.executeQuery(
@@ -1816,6 +2215,10 @@ app.put('/courses/:courseId/questions/:questionId', authenticate, requireRole('t
         if (question_text !== undefined) {
             updates.push('question_text = ?');
             params.push(question_text);
+        }
+        if (explanation !== undefined) {
+            updates.push('explanation = ?');
+            params.push(explanation);
         }
         if (options !== undefined) {
             updates.push('options = ?');
@@ -1906,7 +2309,7 @@ app.patch('/courses/:courseId/questions/:questionId/status', authenticate, requi
 app.post('/courses/:courseId/questions/manual', authenticate, requireRole('teacher', 'admin'), requireCourseOwnership(db), async (req, res) => {
     try {
         const courseId = req.params.courseId;
-        const { question_text, options, correct_answer } = req.body;
+        const { question_text, options, correct_answer, explanation } = req.body;
 
         if (!question_text || !options || !Array.isArray(options) || options.length < 2 || !correct_answer) {
             return errorResponse(res, '请提供完整的题目信息（题目内容、至少2个选项、正确答案）');
@@ -1920,8 +2323,8 @@ app.post('/courses/:courseId/questions/manual', authenticate, requireRole('teach
 
         const optionsJson = JSON.stringify(options);
         const result = await db.executeQuery(
-            'INSERT INTO questions (course_id, question_text, options, correct_answer, status, source) VALUES (?, ?, ?, ?, ?, ?)',
-            [courseId, question_text, optionsJson, correct_answer, 'published', 'manual']
+            'INSERT INTO questions (course_id, question_text, options, correct_answer, explanation, status, source) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [courseId, question_text, optionsJson, correct_answer, explanation || null, 'published', 'manual']
         );
 
         successResponse(res, {
@@ -1930,6 +2333,7 @@ app.post('/courses/:courseId/questions/manual', authenticate, requireRole('teach
             question_text,
             options,
             correct_answer,
+            explanation: explanation || null,
             status: 'published',
             source: 'manual'
         }, '题目添加成功');
@@ -3895,6 +4299,113 @@ async function startServer() {
         // 注意：默认分类不再自动初始化
         // 管理员在后台管理的分类会持久化存储在数据库中
 
+        // 创建collections表（合集：教师自建，收录多门课程）
+        try {
+            await db.executeQuery(`
+                CREATE TABLE IF NOT EXISTS collections (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(200) NOT NULL,
+                    description TEXT,
+                    cover_url VARCHAR(500),
+                    teacher_id INT NOT NULL,
+                    teacher_name VARCHAR(50) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_collection_teacher (teacher_id),
+                    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            `);
+            console.log('✅ collections表创建/已存在');
+        } catch (error) {
+            console.warn('⚠️  创建collections表时出现错误:', error.message);
+        }
+
+        // 创建collection_courses表（合集与课程的多对多关联）
+        try {
+            await db.executeQuery(`
+                CREATE TABLE IF NOT EXISTS collection_courses (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    collection_id INT NOT NULL,
+                    course_id INT NOT NULL,
+                    sort_order INT DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_collection_course (collection_id, course_id),
+                    INDEX idx_cc_collection (collection_id),
+                    INDEX idx_cc_course (course_id),
+                    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE,
+                    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            `);
+            console.log('✅ collection_courses表创建/已存在');
+        } catch (error) {
+            console.warn('⚠️  创建collection_courses表时出现错误:', error.message);
+        }
+
+        // 创建collection_enrollments表（学生选合集记录）
+        try {
+            await db.executeQuery(`
+                CREATE TABLE IF NOT EXISTS collection_enrollments (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    student_id INT NOT NULL,
+                    collection_id INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_student_collection (student_id, collection_id),
+                    INDEX idx_ce_student (student_id),
+                    INDEX idx_ce_collection (collection_id),
+                    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            `);
+            console.log('✅ collection_enrollments表创建/已存在');
+        } catch (error) {
+            console.warn('⚠️  创建collection_enrollments表时出现错误:', error.message);
+        }
+
+        // 添加courses表的collection_only列（仅合集可见的课程，不出现在课程列表）
+        try {
+            await db.executeQuery(`
+                ALTER TABLE courses
+                ADD COLUMN collection_only TINYINT(1) DEFAULT 0
+            `);
+            console.log('✅ 已添加collection_only字段到courses表');
+        } catch (error) {
+            if (error.code === 'ER_DUP_FIELDNAME') {
+                console.log('ℹ️  collection_only字段已存在');
+            } else {
+                console.warn('⚠️  添加courses表collection_only字段时出现错误:', error.message);
+            }
+        }
+
+        // 添加collections表的category_id列（合集分类标签）
+        try {
+            await db.executeQuery(`
+                ALTER TABLE collections
+                ADD COLUMN category_id INT DEFAULT NULL
+            `);
+            console.log('✅ 已添加category_id字段到collections表');
+        } catch (error) {
+            if (error.code === 'ER_DUP_FIELDNAME') {
+                console.log('ℹ️  category_id字段已存在');
+            } else {
+                console.warn('⚠️  添加collections表category_id字段时出现错误:', error.message);
+            }
+        }
+
+        // 添加collections表category_id外键约束
+        try {
+            await db.executeQuery(`
+                ALTER TABLE collections
+                ADD CONSTRAINT fk_collection_category
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+            `);
+            console.log('✅ 已添加collections表category_id外键约束');
+        } catch (error) {
+            if (error.code === 'ER_DUP_KEY' || error.code === 'ER_FK_DUP_KEY' || error.code === 'ER_CANT_CREATE_FK') {
+                console.log('ℹ️  合集category外键约束已存在或无法创建');
+            } else {
+                console.warn('⚠️  添加collections表category外键约束时出现错误:', error.message);
+            }
+        }
+
         // 创建conversations表
         try {
             await db.executeQuery(`
@@ -4007,6 +4518,20 @@ async function startServer() {
             // 列已存在时会报错，忽略
             if (!error.message.includes('Duplicate column')) {
                 console.warn('⚠️  添加questions列时出现错误:', error.message);
+            }
+        }
+
+        // 添加questions表的explanation列（题目解析）
+        try {
+            await db.executeQuery(`
+                ALTER TABLE questions
+                ADD COLUMN explanation TEXT DEFAULT NULL
+            `);
+            console.log('✅ questions表已添加explanation列');
+        } catch (error) {
+            // 列已存在时会报错，忽略
+            if (!error.message.includes('Duplicate column')) {
+                console.warn('⚠️  添加questions表explanation列时出现错误:', error.message);
             }
         }
 

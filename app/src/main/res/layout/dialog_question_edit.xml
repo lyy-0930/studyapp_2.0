@@ -116,6 +116,26 @@
             android:textSize="14sp"
             android:padding="8dp"
             android:background="@drawable/edit_text_background"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="题目解析（可留空）"
+            android:textSize="14sp"
+            android:textColor="@color/darker_gray"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/editExplanation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="80dp"
+            android:gravity="top|start"
+            android:hint="请输入解析，帮助学生理解知识点"
+            android:textSize="14sp"
+            android:padding="8dp"
+            android:background="@drawable/edit_text_background"
             android:layout_marginBottom="16dp" />
 
     </LinearLayout>

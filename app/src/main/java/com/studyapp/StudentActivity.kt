@@ -2,6 +2,7 @@ package com.studyapp
 
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -25,6 +26,7 @@ import com.studyapp.manager.CourseSelectionManager
 import com.studyapp.manager.StudyRecordManager
 import com.studyapp.model.Category
 import com.studyapp.model.Course
+import com.studyapp.model.CourseCollection
 import com.studyapp.model.CourseMaterial
 import com.studyapp.model.Question
 import com.studyapp.model.QuizResult
@@ -110,6 +112,15 @@ class StudentActivity : AppCompatActivity(),
     private lateinit var materialListLayout: LinearLayout
     private lateinit var materialEmptyText: TextView
 
+    // ==================== 合集详情（整页） ====================
+    private lateinit var collectionDetailContent: NestedScrollView
+    private lateinit var collectionDetailBackBtn: TextView
+    private lateinit var collectionDetailTitle: TextView
+    private lateinit var collectionDetailCount: TextView
+    private lateinit var collectionCoursesRecyclerView: RecyclerView
+    private lateinit var emptyCollectionLayout: LinearLayout
+    private var collectionDetailFromPanel = 1
+
     // ==================== 数据 ====================
     private lateinit var username: String
     private var userId: Int = 0
@@ -138,6 +149,8 @@ class StudentActivity : AppCompatActivity(),
     private var enrolledCourses: List<Course> = emptyList()
     private var selectedCourseForRecord: Course? = null
     private var allCourses: List<Course> = emptyList()
+    private var allCollections: List<CourseCollection> = emptyList()   // 合集列表（混入课程列表显示）
+    private var myCollectionsFull: List<CourseCollection> = emptyList() // 我的课程里的已选合集
 
     // 课程详情状态
     private var currentDetailCourse: Course? = null
@@ -240,6 +253,14 @@ class StudentActivity : AppCompatActivity(),
         courseDetailTeacher = findViewById(R.id.courseDetailTeacher)
         detailTabQuiz = findViewById(R.id.detailTabQuiz)
         detailTabMaterial = findViewById(R.id.detailTabMaterial)
+        // 合集详情
+        collectionDetailContent = findViewById(R.id.collectionDetailContent)
+        collectionDetailBackBtn = findViewById(R.id.collectionDetailBackBtn)
+        collectionDetailTitle = findViewById(R.id.collectionDetailTitle)
+        collectionDetailCount = findViewById(R.id.collectionDetailCount)
+        collectionCoursesRecyclerView = findViewById(R.id.collectionCoursesRecyclerView)
+        emptyCollectionLayout = findViewById(R.id.emptyCollectionLayout)
+
         courseDetailQuizPanel = findViewById(R.id.courseDetailQuizPanel)
         quizResultCard = findViewById(R.id.quizResultCard)
         quizScoreText = findViewById(R.id.quizScoreText)
@@ -350,6 +371,11 @@ class StudentActivity : AppCompatActivity(),
         myCoursesAdapter.setButtonMode(CourseAdapter.ButtonMode.PLAY)
         myCoursesAdapter.setOnCoursePlayListener(this)
         myCoursesAdapter.setOnCourseClickListener(this)
+        myCoursesAdapter.setOnCollectionClickListener(object : CourseAdapter.OnCollectionClickListener {
+            override fun onCollectionClick(collection: CourseCollection, position: Int) {
+                showCollectionDetail(collection, 1)
+            }
+        })
         myCoursesRecyclerView.layoutManager = LinearLayoutManager(this)
         myCoursesRecyclerView.adapter = myCoursesAdapter
 
@@ -357,8 +383,42 @@ class StudentActivity : AppCompatActivity(),
         selectCoursesAdapter = CourseAdapter(emptyList())
         selectCoursesAdapter.setButtonMode(CourseAdapter.ButtonMode.SELECT)
         selectCoursesAdapter.setOnCourseSelectListener(this)
+        selectCoursesAdapter.setOnCollectionClickListener(object : CourseAdapter.OnCollectionClickListener {
+            override fun onCollectionClick(collection: CourseCollection, position: Int) {
+                showCollectionDetail(collection, 2)
+            }
+        })
+        selectCoursesAdapter.setOnCollectionSelectListener(object : CourseAdapter.OnCollectionSelectListener {
+            override fun onCollectionSelected(collection: CourseCollection, position: Int) {
+                toggleCollectionEnrollment(collection)
+            }
+        })
         selectCoursesRecyclerView.layoutManager = LinearLayoutManager(this)
         selectCoursesRecyclerView.adapter = selectCoursesAdapter
+    }
+
+    /**
+     * 学生选/退合集
+     */
+    private fun toggleCollectionEnrollment(collection: CourseCollection) {
+        val newState = !collection.isEnrolled
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                if (newState) apiService.enrollCollection(collection.id)
+                else apiService.unenrollCollection(collection.id)
+            }
+            if (result.isSuccess) {
+                // 更新本地合集状态
+                allCollections = allCollections.map {
+                    if (it.id == collection.id) it.copy(isEnrolled = newState) else it
+                }
+                applySelectCoursesFilter()
+                val action = if (newState) "选课" else "退选"
+                Toast.makeText(this@StudentActivity, "${action}成功: ${collection.name}", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this@StudentActivity, "操作失败: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     // ==================== 筛选功能 ====================
@@ -420,12 +480,13 @@ class StudentActivity : AppCompatActivity(),
     // ==================== 面板切换 ====================
 
     private fun showPanel(panelIndex: Int) {
-        // 0=首页, 1=我的课程, 2=选择课程, 3=消息, 4=课程详情
+        // 0=首页, 1=我的课程, 2=选择课程, 3=消息, 4=课程详情, 5=合集详情
         homeContent.visibility = if (panelIndex == 0) View.VISIBLE else View.GONE
         myCoursesContent.visibility = if (panelIndex == 1) View.VISIBLE else View.GONE
         selectCoursesContent.visibility = if (panelIndex == 2) View.VISIBLE else View.GONE
         chatFragmentContainer.visibility = if (panelIndex == 3) View.VISIBLE else View.GONE
         courseDetailContent.visibility = if (panelIndex == 4) View.VISIBLE else View.GONE
+        collectionDetailContent.visibility = if (panelIndex == 5) View.VISIBLE else View.GONE
 
         if (panelIndex != 3 && chatFragment != null && chatFragment!!.isAdded) {
             supportFragmentManager.beginTransaction()
@@ -580,6 +641,9 @@ class StudentActivity : AppCompatActivity(),
         detailTabQuiz.setOnClickListener { switchDetailTab(0) }
         detailTabMaterial.setOnClickListener { switchDetailTab(1) }
         quizSubmitBtn.setOnClickListener { submitQuiz() }
+
+        // 合集详情
+        collectionDetailBackBtn.setOnClickListener { showPanel(collectionDetailFromPanel) }
     }
 
     // ==================== 日历 ====================
@@ -802,6 +866,10 @@ class StudentActivity : AppCompatActivity(),
 
     private fun loadMyCourses() {
         coroutineScope.launch {
+            // 并行加载已选合集（我的课程里也显示已选合集）
+            val colResult = withContext(Dispatchers.IO) { apiService.getEnrolledCollections() }
+            if (colResult.isSuccess) myCollectionsFull = colResult.getOrThrow()
+
             try {
                 val result = withContext(Dispatchers.IO) { apiService.getUserCourses(userId) }
                 if (result.isSuccess) {
@@ -843,11 +911,18 @@ class StudentActivity : AppCompatActivity(),
             }
         }
 
-        myCoursesAdapter.updateData(filtered)
-        myCoursesSelectedCount.text = filtered.size.toString()
+        // 已选合集混入列表（按分类筛选，年份不适用）
+        var shownCollections = myCollectionsFull
+        if (categoryPos > 0 && categoryPos - 1 < filterCategories.size) {
+            val selectedId = filterCategories[categoryPos - 1].id
+            shownCollections = shownCollections.filter { it.categoryId == selectedId }
+        }
+
+        myCoursesAdapter.updateData(filtered, shownCollections)
+        myCoursesSelectedCount.text = (filtered.size + shownCollections.size).toString()
         myCoursesTotalCredits.text = filtered.sumOf { it.credit }.toString()
 
-        if (filtered.isEmpty()) {
+        if (filtered.isEmpty() && shownCollections.isEmpty()) {
             emptyMyCoursesLayout.visibility = View.VISIBLE
             myCoursesRecyclerView.visibility = View.GONE
         } else {
@@ -860,6 +935,10 @@ class StudentActivity : AppCompatActivity(),
 
     private fun loadSelectCourses() {
         coroutineScope.launch {
+            // 并行加载合集（混入课程列表显示）
+            val collectionsResult = withContext(Dispatchers.IO) { apiService.getCollections() }
+            if (collectionsResult.isSuccess) allCollections = collectionsResult.getOrThrow()
+
             try {
                 val result = withContext(Dispatchers.IO) { apiService.getAllCourses() }
                 if (result.isSuccess) {
@@ -890,6 +969,51 @@ class StudentActivity : AppCompatActivity(),
         applySelectCoursesFilter()
     }
 
+    private fun showCollectionDetail(collection: CourseCollection, fromPanel: Int) {
+        collectionDetailFromPanel = fromPanel
+        collectionDetailTitle.text = collection.name
+        collectionDetailCount.text = "共 ${collection.courseCount} 门课程，点「播放」观看"
+
+        // 课程列表复用"我的课程"同款适配器（播放模式）
+        if (collectionCoursesRecyclerView.adapter == null) {
+            val adapter = CourseAdapter(emptyList())
+            adapter.setButtonMode(CourseAdapter.ButtonMode.PLAY)
+            adapter.setOnCoursePlayListener(this)
+            adapter.setOnCourseClickListener(this)
+            collectionCoursesRecyclerView.layoutManager = LinearLayoutManager(this)
+            collectionCoursesRecyclerView.adapter = adapter
+        }
+        val adapter = collectionCoursesRecyclerView.adapter as? CourseAdapter
+
+        showPanel(5)
+
+        coroutineScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) { apiService.getCollectionCourses(collection.id) }
+                if (result.isSuccess) {
+                    val list = result.getOrThrow()
+                    val courses = list.map {
+                        it.toCourse(isSelected = courseSelectionManager.isCourseSelected(it.id))
+                    }
+                    if (courses.isEmpty()) {
+                        emptyCollectionLayout.visibility = View.VISIBLE
+                        collectionCoursesRecyclerView.visibility = View.GONE
+                    } else {
+                        emptyCollectionLayout.visibility = View.GONE
+                        collectionCoursesRecyclerView.visibility = View.VISIBLE
+                        adapter?.updateData(courses)
+                    }
+                } else {
+                    emptyCollectionLayout.visibility = View.VISIBLE
+                    collectionCoursesRecyclerView.visibility = View.GONE
+                }
+            } catch (_: Exception) {
+                emptyCollectionLayout.visibility = View.VISIBLE
+                collectionCoursesRecyclerView.visibility = View.GONE
+            }
+        }
+    }
+
     private fun applySelectCoursesFilter() {
         var filtered = allCoursesFull
 
@@ -907,7 +1031,14 @@ class StudentActivity : AppCompatActivity(),
             }
         }
 
-        selectCoursesAdapter.updateData(filtered)
+        // 合集混入课程列表（同样按分类筛选，年份不适用于合集）
+        var shownCollections = allCollections
+        if (categoryPos > 0 && categoryPos - 1 < filterCategories.size) {
+            val selectedId = filterCategories[categoryPos - 1].id
+            shownCollections = shownCollections.filter { it.categoryId == selectedId }
+        }
+
+        selectCoursesAdapter.updateData(filtered, shownCollections)
         val selectedCount = filtered.count { it.isSelected }
         selectCoursesSelectedCount.text = "已选课程：${selectedCount}门"
         selectCoursesTotalCount.text = "总课程数：${filtered.size}门"
@@ -924,7 +1055,7 @@ class StudentActivity : AppCompatActivity(),
             allCourses = allCourses.toMutableList().apply {
                 this[position] = this[position].copy(isSelected = newState)
             }
-            selectCoursesAdapter.updateData(allCourses)
+            selectCoursesAdapter.updateData(allCourses, allCollections)
             updateSelectCoursesUI()
         }
 
@@ -1290,6 +1421,7 @@ class StudentActivity : AppCompatActivity(),
             val optionsGroup = itemView.findViewById<RadioGroup>(R.id.quizOptionsGroup)
             val resultIndicator = itemView.findViewById<TextView>(R.id.quizResultIndicator)
             val correctAnswerText = itemView.findViewById<TextView>(R.id.quizCorrectAnswerText)
+            val explanationText = itemView.findViewById<TextView>(R.id.quizExplanationText)
 
             numberText.text = "第 ${index + 1} 题"
             questionText.text = question.questionText
@@ -1357,6 +1489,15 @@ class StudentActivity : AppCompatActivity(),
                 correctAnswerText.text = "正确答案：$correctAnswer. $correctOptionText"
             } else {
                 correctAnswerText.visibility = View.GONE
+            }
+
+            // 题目解析：答对答错都展示，供学生复习理解
+            val explanation = question.explanation?.takeIf { it.isNotBlank() }
+            if (explanation != null) {
+                explanationText.text = "解析：$explanation"
+                explanationText.visibility = View.VISIBLE
+            } else {
+                explanationText.visibility = View.GONE
             }
 
             quizQuestionsContainer.addView(itemView)

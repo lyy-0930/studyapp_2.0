@@ -7,6 +7,7 @@ data class Question(
     val questionText: String,
     val options: List<String>,
     val correctAnswer: String,
+    val explanation: String? = null,
     val status: String = "published",
     val source: String = "ai",
     val createdAt: String? = null,

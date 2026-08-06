@@ -15,6 +15,7 @@ import com.studyapp.model.QuestionAccuracyData
 import com.studyapp.model.QuestionAccuracyResponse
 import com.studyapp.model.Question
 import com.studyapp.model.QuizResult
+import com.studyapp.model.CourseCollection
 import com.studyapp.model.StudentStatsData
 import com.studyapp.model.StudentStatsResponse
 import com.studyapp.model.CourseCreateResponse
@@ -1065,7 +1066,9 @@ class ApiService private constructor(val context: Context) {
         name: String, description: String, teacherId: Int,
         teacherName: String, credit: Int = 2,
         videoUrl: String? = null, imageUrl: String? = null,
-        categoryId: Int? = null
+        categoryId: Int? = null,
+        collectionIds: List<Int>? = null,
+        collectionOnly: Boolean = false
     ): Result<CourseCreateResponse> {
         return withContext(Dispatchers.IO) {
             try {
@@ -1079,7 +1082,15 @@ class ApiService private constructor(val context: Context) {
                 if (!videoUrl.isNullOrEmpty()) pairs.add("videoUrl" to videoUrl)
                 if (!imageUrl.isNullOrEmpty()) pairs.add("imageUrl" to imageUrl)
                 if (categoryId != null) pairs.add("categoryId" to categoryId)
-                val body = buildJson(*pairs.toTypedArray())
+                pairs.add("collectionOnly" to collectionOnly)
+                val body = if (collectionIds != null && collectionIds.isNotEmpty()) {
+                    // 需要数组字段，直接构造 JSONObject（避免 buildJson 把数组转成字符串）
+                    val rootObj = JSONObject(buildJson(*pairs.toTypedArray()))
+                    rootObj.put("collectionIds", JSONArray(collectionIds))
+                    rootObj.toString()
+                } else {
+                    buildJson(*pairs.toTypedArray())
+                }
                 val responseBody = httpPost("$BASE_URL/courses", body)
                 val root = JSONObject(responseBody)
                 val success = root.optBoolean("success", false)
@@ -1099,6 +1110,374 @@ class ApiService private constructor(val context: Context) {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "创建课程失败: ${e.message}", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    // ==================== 合集（Collection）管理 API ====================
+
+    /**
+     * 解析合集 JSON 对象
+     */
+    private fun parseCollection(c: JSONObject): CourseCollection {
+        return CourseCollection(
+            id = c.getInt("id"),
+            name = c.getString("name"),
+            description = c.optStringOrNull("description"),
+            coverUrl = c.optStringOrNull("cover_url"),
+            categoryId = if (c.has("category_id") && !c.isNull("category_id")) c.optInt("category_id") else null,
+            categoryName = c.optStringOrNull("category_name"),
+            teacherName = c.optString("teacher_name", ""),
+            courseCount = c.optInt("course_count", 0),
+            isEnrolled = c.optBoolean("is_enrolled", false),
+            createdAt = c.optStringOrNull("created_at")
+        )
+    }
+
+    /**
+     * 解析课程 JSON 对象为 ApiCourse（合集课程列表复用）
+     */
+    private fun parseCourseJson(c: JSONObject): ApiCourse {
+        return ApiCourse(
+            id = c.getInt("id"),
+            name = c.optString("name", ""),
+            description = c.optString("description", ""),
+            teacher = c.optString("teacher", ""),
+            credit = c.optInt("credit", 0),
+            createdAt = c.optStringOrNull("created_at"),
+            selectedAt = c.optStringOrNull("selected_at"),
+            videoUrl = c.optStringOrNull("video_url"),
+            teacherName = c.optString("teacher_name", c.optString("teacher", "")),
+            imageUrl = c.optStringOrNull("image_url"),
+            categoryId = if (c.has("category_id") && !c.isNull("category_id")) c.optInt("category_id") else null,
+            categoryName = c.optStringOrNull("category_name"),
+            progress = c.optInt("progress", 0)
+        )
+    }
+
+    /**
+     * 获取所有合集（公开）
+     */
+    suspend fun getCollections(): Result<List<CourseCollection>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/collections")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<CourseCollection>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseCollection(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 获取我的合集（教师）
+     */
+    suspend fun getMyCollections(): Result<List<CourseCollection>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/collections/mine")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<CourseCollection>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseCollection(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 创建合集（教师）
+     */
+    suspend fun createCollection(name: String, description: String?, coverUrl: String?, categoryId: Int? = null): Result<CourseCollection> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = buildJson(
+                    "name" to name,
+                    "description" to description?.takeIf { it.isNotBlank() },
+                    "coverUrl" to coverUrl?.takeIf { it.isNotBlank() },
+                    "categoryId" to categoryId
+                )
+                val responseBody = httpPost("$BASE_URL/collections", body)
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataObj = root.optJSONObject("data")
+                    if (dataObj != null) {
+                        Result.success(parseCollection(dataObj))
+                    } else {
+                        Result.failure(IOException("创建合集失败"))
+                    }
+                } else {
+                    Result.failure(IOException(root.optString("message", "")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 更新合集（owner）
+     */
+    suspend fun updateCollection(id: Int, name: String?, description: String?, coverUrl: String?, categoryId: Int? = null): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val pairs = mutableListOf<Pair<String, Any?>>()
+                if (!name.isNullOrBlank()) pairs.add("name" to name.trim())
+                if (description != null) pairs.add("description" to description)
+                if (coverUrl != null) pairs.add("coverUrl" to coverUrl)
+                if (categoryId != null) pairs.add("categoryId" to categoryId)
+                if (pairs.isEmpty()) return@withContext Result.failure(IOException("没有要更新的字段"))
+                val responseBody = httpPut("$BASE_URL/collections/$id", buildJson(*pairs.toTypedArray()))
+                Result.success(JSONObject(responseBody).optBoolean("success", false))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 删除合集（owner）
+     */
+    suspend fun deleteCollection(id: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                httpDelete("$BASE_URL/collections/$id")
+                Result.success(true)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 获取合集内课程列表（公开）
+     */
+    suspend fun getCollectionCourses(collectionId: Int): Result<List<ApiCourse>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/collections/$collectionId/courses")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<ApiCourse>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseCourseJson(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 添加课程到合集（owner；教师只能加自己的课）
+     */
+    suspend fun addCourseToCollection(collectionId: Int, courseId: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = buildJson("courseId" to courseId)
+                val responseBody = httpPost("$BASE_URL/collections/$collectionId/courses", body)
+                Result.success(JSONObject(responseBody).optBoolean("success", false))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 从合集移出课程（owner）
+     */
+    suspend fun removeCourseFromCollection(collectionId: Int, courseId: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                httpDelete("$BASE_URL/collections/$collectionId/courses/$courseId")
+                Result.success(true)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 更新合集内课程排序（owner）
+     */
+    suspend fun reorderCollectionCourse(collectionId: Int, courseId: Int, sortOrder: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = buildJson("sortOrder" to sortOrder)
+                val responseBody = httpPut("$BASE_URL/collections/$collectionId/courses/$courseId", body)
+                Result.success(JSONObject(responseBody).optBoolean("success", false))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 获取课程所属的合集列表（认证，上传页预勾选用）
+     */
+    suspend fun getCourseCollections(courseId: Int): Result<List<CourseCollection>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/courses/$courseId/collections")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<CourseCollection>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseCollection(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 学生选合集（幂等）
+     */
+    suspend fun enrollCollection(collectionId: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpPost("$BASE_URL/collections/$collectionId/enroll", buildJson())
+                Result.success(JSONObject(responseBody).optBoolean("success", false))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 学生退选合集
+     */
+    suspend fun unenrollCollection(collectionId: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                httpDelete("$BASE_URL/collections/$collectionId/enroll")
+                Result.success(true)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 获取学生已选合集（我的课程展示用）
+     */
+    suspend fun getEnrolledCollections(): Result<List<CourseCollection>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/collections/enrolled")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<CourseCollection>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseCollection(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 上传封面图片（合集/课程封面，复用 /upload/course-image 接口）
+     * @return 图片URL
+     */
+    suspend fun uploadCoverImage(file: File, name: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val mimeType = when (file.extension.lowercase()) {
+                    "png" -> "image/png"
+                    "gif" -> "image/gif"
+                    "webp" -> "image/webp"
+                    "jpg", "jpeg" -> "image/jpeg"
+                    else -> "image/jpeg"
+                }
+                val responseBody = httpPostMultipart(
+                    "$BASE_URL/upload/course-image",
+                    mapOf("courseName" to name),
+                    "image", file.name, file.readBytes(), mimeType
+                )
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val data = root.optJSONObject("data")
+                    val url = data?.optString("imageUrl", "")?.takeIf { it.isNotEmpty() }
+                    if (url != null) Result.success(url)
+                    else Result.failure(IOException("服务器未返回图片地址"))
+                } else {
+                    Result.failure(IOException(root.optString("message", "上传封面失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * 调用后端AI生成封面图（合集/课程封面）
+     * @return 图片URL（服务器已保存）
+     */
+    suspend fun generateCourseImage(name: String, prompt: String? = null): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = buildJson(
+                    "courseName" to name,
+                    "prompt" to prompt?.takeIf { it.isNotBlank() }
+                )
+                val responseBody = httpPost("$BASE_URL/generate-course-image", body)
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val data = root.optJSONObject("data")
+                    val url = data?.optString("imageUrl", "")?.takeIf { it.isNotEmpty() }
+                    if (url != null) Result.success(url)
+                    else Result.failure(IOException("AI生成封面失败"))
+                } else {
+                    Result.failure(IOException(root.optString("message", "AI生成封面失败")))
+                }
+            } catch (e: Exception) {
                 Result.failure(e)
             }
         }
@@ -1228,6 +1607,7 @@ class ApiService private constructor(val context: Context) {
                                 questionText = q.optString("question_text", "").takeIf { it.isNotEmpty() } ?: q.optString("questionText", ""),
                                 options = opts,
                                 correctAnswer = q.optString("correct_answer", "").takeIf { it.isNotEmpty() } ?: q.optString("correctAnswer", ""),
+                                explanation = q.optString("explanation", null),
                                 status = q.optString("status", "published")
                             ))
                         }
@@ -1338,7 +1718,8 @@ class ApiService private constructor(val context: Context) {
                     "question_text" to question.questionText,
                     "options" to JSONArray(question.options).toString(),
                     "correct_answer" to question.correctAnswer,
-                    "status" to question.status
+                    "status" to question.status,
+                    "explanation" to (question.explanation?.takeIf { it.isNotBlank() })
                 )
                 val responseBody = httpPut("$BASE_URL/courses/$courseId/questions/${question.id}", body)
                 Result.success(JSONObject(responseBody).optBoolean("success", false))
@@ -1370,13 +1751,14 @@ class ApiService private constructor(val context: Context) {
         }
     }
 
-    suspend fun addManualQuestion(courseId: Int, questionText: String, options: List<String>, correctAnswer: String): Result<Boolean> {
+    suspend fun addManualQuestion(courseId: Int, questionText: String, options: List<String>, correctAnswer: String, explanation: String? = null): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
                 val body = buildJson(
                     "question_text" to questionText,
                     "options" to JSONArray(options).toString(),
-                    "correct_answer" to correctAnswer
+                    "correct_answer" to correctAnswer,
+                    "explanation" to (explanation?.takeIf { it.isNotBlank() })
                 )
                 val responseBody = httpPost("$BASE_URL/courses/$courseId/questions/manual", body)
                 Result.success(JSONObject(responseBody).optBoolean("success", false))
@@ -2146,6 +2528,7 @@ class ApiService private constructor(val context: Context) {
                                     questionText = q.optString("question_text", "").takeIf { it.isNotEmpty() } ?: q.optString("questionText", ""),
                                     options = opts,
                                     correctAnswer = q.optString("correct_answer", "").takeIf { it.isNotEmpty() } ?: q.optString("correctAnswer", ""),
+                                    explanation = q.optString("explanation", null),
                                     studentAnswer = q.optString("student_answer", null) ?: q.optString("studentAnswer", null),
                                     isCorrect = q.optBoolean("is_correct", false)
                                 ))

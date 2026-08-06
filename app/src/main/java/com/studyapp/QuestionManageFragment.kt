@@ -203,6 +203,15 @@ class QuestionManageFragment : Fragment() {
         card.findViewById<TextView>(R.id.questionOptions).text = optionsText
         card.findViewById<TextView>(R.id.questionCorrectAnswer).text = "正确答案：${question.correctAnswer}"
 
+        val explanationText = card.findViewById<TextView>(R.id.questionExplanation)
+        val explanation = question.explanation?.takeIf { it.isNotBlank() }
+        if (explanation != null) {
+            explanationText.text = "解析：$explanation"
+            explanationText.visibility = View.VISIBLE
+        } else {
+            explanationText.visibility = View.GONE
+        }
+
         val publishBtn = card.findViewById<TextView>(R.id.questionPublishBtn)
         if (question.status == "draft") {
             publishBtn.text = "发布"
@@ -348,6 +357,7 @@ class QuestionManageFragment : Fragment() {
         val editOptionC = dialogView.findViewById<TextView>(R.id.editOptionC) as? android.widget.EditText
         val editOptionD = dialogView.findViewById<TextView>(R.id.editOptionD) as? android.widget.EditText
         val editCorrectAnswer = dialogView.findViewById<TextView>(R.id.editCorrectAnswer) as? android.widget.EditText
+        val editExplanation = dialogView.findViewById<TextView>(R.id.editExplanation) as? android.widget.EditText
 
         if (isEdit && question != null) {
             editQuestionText?.setText(question.questionText)
@@ -358,6 +368,7 @@ class QuestionManageFragment : Fragment() {
                 editOptionD?.setText(question.options[3])
             }
             editCorrectAnswer?.setText(question.correctAnswer)
+            editExplanation?.setText(question.explanation ?: "")
         }
 
         AlertDialog.Builder(requireContext())
@@ -370,6 +381,7 @@ class QuestionManageFragment : Fragment() {
                 val optC = editOptionC?.text?.toString()?.trim() ?: ""
                 val optD = editOptionD?.text?.toString()?.trim() ?: ""
                 val answer = editCorrectAnswer?.text?.toString()?.trim() ?: ""
+                val explanation = editExplanation?.text?.toString()?.trim() ?: ""
 
                 if (text.isEmpty() || optA.isEmpty() || optB.isEmpty() || optC.isEmpty() || optD.isEmpty() || answer.isEmpty()) {
                     Toast.makeText(requireContext(), "请填写完整信息", Toast.LENGTH_SHORT).show()
@@ -382,11 +394,12 @@ class QuestionManageFragment : Fragment() {
                     val updated = question.copy(
                         questionText = text,
                         options = options,
-                        correctAnswer = answer
+                        correctAnswer = answer,
+                        explanation = explanation.ifBlank { null }
                     )
                     updateQuestion(updated)
                 } else {
-                    addManualQuestion(text, options, answer)
+                    addManualQuestion(text, options, answer, explanation.ifBlank { null })
                 }
             }
             .setNegativeButton("取消", null)
@@ -411,11 +424,11 @@ class QuestionManageFragment : Fragment() {
         }
     }
 
-    private fun addManualQuestion(text: String, options: List<String>, answer: String) {
+    private fun addManualQuestion(text: String, options: List<String>, answer: String, explanation: String? = null) {
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    apiService.addManualQuestion(courseId, text, options, answer)
+                    apiService.addManualQuestion(courseId, text, options, answer, explanation)
                 }
                 if (result.isSuccess) {
                     Toast.makeText(requireContext(), "题目已添加", Toast.LENGTH_SHORT).show()

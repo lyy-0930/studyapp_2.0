@@ -88,6 +88,18 @@
             android:textColor="@color/tech_green_data"
             android:layout_marginTop="6dp" />
 
+        <!-- 题目解析 -->
+        <TextView
+            android:id="@+id/questionExplanation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="12sp"
+            android:textColor="#8A6D3B"
+            android:visibility="gone"
+            android:layout_marginTop="6dp"
+            android:lineSpacingExtra="2dp" />
+
         <!-- 操作按钮 -->
         <LinearLayout
             android:layout_width="match_parent"

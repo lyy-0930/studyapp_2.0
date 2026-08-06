@@ -17,6 +17,7 @@ import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -35,6 +36,7 @@ import com.studyapp.manager.OSSUploadManager
 import com.studyapp.manager.VideoStorageManager
 import com.studyapp.model.Category
 import com.studyapp.model.Course
+import com.studyapp.model.CourseCollection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -65,6 +67,11 @@ class UploadCourseFragment : Fragment() {
     private lateinit var categorySpinner: Spinner
     private var categories = listOf<Category>()
     private var selectedCategoryId: Int? = null
+    private lateinit var collectionCheckboxContainer: LinearLayout
+    private var myCollections = listOf<CourseCollection>()
+    private val selectedCollectionIds = mutableSetOf<Int>()
+    private var preselectCollectionId = 0
+    private var isCollectionOnly = false
 
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
     private val ossUploadManager = OSSUploadManager.getInstance()
@@ -121,6 +128,8 @@ class UploadCourseFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         loadCurrentUserInfo()
+        preselectCollectionId = arguments?.getInt(ARG_PRESELECT_COLLECTION_ID, 0) ?: 0
+        isCollectionOnly = preselectCollectionId > 0
         apiService = ApiService.getInstance(requireContext())
     }
 
@@ -134,6 +143,24 @@ class UploadCourseFragment : Fragment() {
         setupClickListeners()
         uploadButton.isEnabled = false
         loadCategories()
+        loadCollections()
+    }
+
+    companion object {
+        private const val ARG_PRESELECT_COLLECTION_ID = "preselect_collection_id"
+
+        /**
+         * 创建上传页实例，可选预选合集（从合集管理跳转"上传新课程"时传入）
+         */
+        fun newInstance(preselectCollectionId: Int = 0): UploadCourseFragment {
+            val fragment = UploadCourseFragment()
+            if (preselectCollectionId > 0) {
+                fragment.arguments = Bundle().apply {
+                    putInt(ARG_PRESELECT_COLLECTION_ID, preselectCollectionId)
+                }
+            }
+            return fragment
+        }
     }
 
     private fun initViews(view: View) {
@@ -153,6 +180,7 @@ class UploadCourseFragment : Fragment() {
         aiGenerateCoverButton = view.findViewById(R.id.aiGenerateCoverButton)
         coverPromptEditText = view.findViewById(R.id.coverPromptEditText)
         categorySpinner = view.findViewById(R.id.categorySpinner)
+        collectionCheckboxContainer = view.findViewById(R.id.collectionCheckboxContainer)
     }
 
     private fun setupClickListeners() {
@@ -181,6 +209,64 @@ class UploadCourseFragment : Fragment() {
                         selectedCategoryId = if (pos == 0) null else categories[pos - 1].id
                     }
                     override fun onNothingSelected(parent: AdapterView<*>?) { selectedCategoryId = null }
+                }
+            }
+        }
+    }
+
+    // ==================== Collection Selection ====================
+
+    private fun loadCollections() {
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) { apiService.getMyCollections() }
+            if (result.isSuccess) {
+                myCollections = result.getOrThrow()
+                collectionCheckboxContainer.removeAllViews()
+                if (myCollections.isEmpty()) {
+                    collectionCheckboxContainer.addView(TextView(requireContext()).apply {
+                        text = "暂无合集，可先到「合集管理」创建"
+                        textSize = 13f
+                        setTextColor(android.graphics.Color.GRAY)
+                    })
+                    return@launch
+                }
+
+                // 合集专属上传：只固定在该合集内，不显示在课程列表
+                if (isCollectionOnly && preselectCollectionId > 0) {
+                    collectionCheckboxContainer.addView(TextView(requireContext()).apply {
+                        text = "该课程将仅出现在所选合集中，不显示在课程列表"
+                        textSize = 12f
+                        setTextColor(android.graphics.Color.parseColor("#8A6D3B"))
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { setMargins(0, 0, 0, 6) }
+                    })
+                    val target = myCollections.firstOrNull { it.id == preselectCollectionId }
+                    if (target != null) {
+                        val cb = CheckBox(requireContext()).apply {
+                            text = target.name
+                            textSize = 14f
+                            isChecked = true
+                            isEnabled = false
+                        }
+                        collectionCheckboxContainer.addView(cb)
+                        selectedCollectionIds.add(target.id)
+                    }
+                    return@launch
+                }
+
+                for (c in myCollections) {
+                    val cb = CheckBox(requireContext()).apply {
+                        text = c.name
+                        textSize = 14f
+                        isChecked = c.id == preselectCollectionId
+                        setOnCheckedChangeListener { _, isChecked ->
+                            if (isChecked) selectedCollectionIds.add(c.id)
+                            else selectedCollectionIds.remove(c.id)
+                        }
+                    }
+                    collectionCheckboxContainer.addView(cb)
                 }
             }
         }
@@ -557,7 +643,9 @@ class UploadCourseFragment : Fragment() {
                             credit = 2,
                             videoUrl = uploadResult.fileUrl,
                             imageUrl = uploadedImageUrl,
-                            categoryId = selectedCategoryId
+                            categoryId = selectedCategoryId,
+                            collectionIds = selectedCollectionIds.takeIf { it.isNotEmpty() }?.toList(),
+                            collectionOnly = isCollectionOnly
                         )
 
                         if (createResult.isSuccess) {

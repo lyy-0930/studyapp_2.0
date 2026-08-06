@@ -182,6 +182,35 @@
 
             </LinearLayout>
 
+            <!-- 合集管理 -->
+            <LinearLayout
+                android:id="@+id/navCollections"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="📁"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="合集管理"
+                    android:textSize="15sp"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
             <!-- 数据统计 -->
             <LinearLayout
                 android:id="@+id/navStatistics"
@@ -663,6 +692,13 @@
         <!-- ==================== 题目管理 Fragment 容器 ==================== -->
         <FrameLayout
             android:id="@+id/questionManageContainer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <!-- ==================== 合集管理 Fragment 容器 ==================== -->
+        <FrameLayout
+            android:id="@+id/collectionFragmentContainer"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="gone" />

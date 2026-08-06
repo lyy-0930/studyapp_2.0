@@ -1318,6 +1318,93 @@
 
         </androidx.core.widget.NestedScrollView>
 
+        <!-- ==================== 合集详情内容（该合集的课程列表） ==================== -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/collectionDetailContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 返回按钮 + 合集名称 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:id="@+id/collectionDetailBackBtn"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:text="‹"
+                        android:textSize="28sp"
+                        android:textColor="@color/tsinghua_purple"
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="@drawable/sidebar_item_selector" />
+
+                    <TextView
+                        android:id="@+id/collectionDetailTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text=""
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tsinghua_purple_dark"
+                        android:layout_marginStart="8dp" />
+
+                </LinearLayout>
+
+                <!-- 合集信息 -->
+                <TextView
+                    android:id="@+id/collectionDetailCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="13sp"
+                    android:textColor="@color/darker_gray"
+                    android:layout_marginBottom="12dp"
+                    android:layout_marginStart="48dp" />
+
+                <!-- 课程列表（与"我的课程"同款卡片） -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/collectionCoursesRecyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+
+                <!-- 空状态 -->
+                <LinearLayout
+                    android:id="@+id/emptyCollectionLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="该合集暂无课程"
+                        android:textSize="18sp"
+                        android:textColor="#999999" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
+
         <!-- ==================== 消息 Fragment 容器 ==================== -->
         <FrameLayout
             android:id="@+id/chatFragmentContainer"

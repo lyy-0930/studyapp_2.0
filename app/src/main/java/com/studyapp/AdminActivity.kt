@@ -1467,7 +1467,7 @@ class AdminActivity : AppCompatActivity() {
         infoLayout.addView(subText)
 
         val masteryText = TextView(this).apply {
-            text = String.format("%.1f%%", mastery)
+            text = String.format("%.1f%%", mastery.toDouble())
             textSize = 14f
             setTypeface(null, Typeface.BOLD)
             setTextColor(resources.getColor(R.color.tsinghua_purple))

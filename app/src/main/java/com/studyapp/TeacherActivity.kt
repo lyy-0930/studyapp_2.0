@@ -47,6 +47,7 @@ class TeacherActivity : AppCompatActivity() {
     private lateinit var navHome: LinearLayout
     private lateinit var navUploadCourse: LinearLayout
     private lateinit var navMyCourses: LinearLayout
+    private lateinit var navCollections: LinearLayout
     private lateinit var navStatistics: LinearLayout
     private lateinit var navLogout: LinearLayout
 
@@ -56,6 +57,7 @@ class TeacherActivity : AppCompatActivity() {
     private lateinit var myCoursesContent: NestedScrollView
     private lateinit var statsFragmentContainer: FrameLayout
     private lateinit var questionManageContainer: FrameLayout
+    private lateinit var collectionFragmentContainer: FrameLayout
 
     // ==================== 首页 ====================
     private lateinit var welcomeTitle: TextView
@@ -75,12 +77,14 @@ class TeacherActivity : AppCompatActivity() {
 
     private var uploadFragment: Fragment? = null
     private var statsFragment: Fragment? = null
+    private var collectionFragment: Fragment? = null
     private lateinit var navMessage: LinearLayout
     private lateinit var chatFragmentContainer: FrameLayout
     private var chatFragment: Fragment? = null
     private var userId: Int = 0
     private lateinit var apiService: ApiService
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
+    private var pendingUploadCollectionId = 0
 
     // 用于材料上传的变量
     private var selectedMaterialCourseId: Int = 0
@@ -119,6 +123,7 @@ class TeacherActivity : AppCompatActivity() {
         navHome = findViewById(R.id.navHome)
         navUploadCourse = findViewById(R.id.navUploadCourse)
         navMyCourses = findViewById(R.id.navMyCourses)
+        navCollections = findViewById(R.id.navCollections)
         navStatistics = findViewById(R.id.navStatistics)
         navLogout = findViewById(R.id.navLogout)
 
@@ -130,6 +135,7 @@ class TeacherActivity : AppCompatActivity() {
         navMessage = findViewById(R.id.navMessage)
         chatFragmentContainer = findViewById(R.id.chatFragmentContainer)
         questionManageContainer = findViewById(R.id.questionManageContainer)
+        collectionFragmentContainer = findViewById(R.id.collectionFragmentContainer)
 
         // 首页
         welcomeTitle = findViewById(R.id.welcomeTitle)
@@ -244,13 +250,14 @@ class TeacherActivity : AppCompatActivity() {
     // ==================== 面板切换 ====================
 
     fun showPanel(panelIndex: Int) {
-        // 0=首页, 1=课程上传, 2=数据统计, 3=消息, 4=我的课程, 5=题目管理
+        // 0=首页, 1=课程上传, 2=数据统计, 3=消息, 4=我的课程, 5=题目管理, 6=合集管理
         homeContent.visibility = if (panelIndex == 0) View.VISIBLE else View.GONE
         uploadFragmentContainer.visibility = if (panelIndex == 1) View.VISIBLE else View.GONE
         myCoursesContent.visibility = if (panelIndex == 4) View.VISIBLE else View.GONE
         statsFragmentContainer.visibility = if (panelIndex == 2) View.VISIBLE else View.GONE
         chatFragmentContainer.visibility = if (panelIndex == 3) View.VISIBLE else View.GONE
         questionManageContainer.visibility = if (panelIndex == 5) View.VISIBLE else View.GONE
+        collectionFragmentContainer.visibility = if (panelIndex == 6) View.VISIBLE else View.GONE
 
         val ft = supportFragmentManager.beginTransaction()
 
@@ -274,7 +281,11 @@ class TeacherActivity : AppCompatActivity() {
             }
             1 -> {
                 if (uploadFragment == null) {
-                    uploadFragment = UploadCourseFragment()
+                    uploadFragment = if (pendingUploadCollectionId > 0) {
+                        UploadCourseFragment.newInstance(pendingUploadCollectionId).also { pendingUploadCollectionId = 0 }
+                    } else {
+                        UploadCourseFragment()
+                    }
                 }
                 if (!uploadFragment!!.isAdded) {
                     ft.replace(R.id.uploadFragmentContainer, uploadFragment!!)
@@ -363,6 +374,31 @@ class TeacherActivity : AppCompatActivity() {
                     ft.remove(chatFragment!!)
                     chatFragment = null
                 }
+                if (collectionFragment != null && collectionFragment!!.isAdded) {
+                    ft.remove(collectionFragment!!)
+                    collectionFragment = null
+                }
+            }
+            6 -> {
+                if (collectionFragment == null) {
+                    collectionFragment = CollectionManageFragment()
+                }
+                if (!collectionFragment!!.isAdded) {
+                    ft.replace(R.id.collectionFragmentContainer, collectionFragment!!)
+                }
+                // 移除其他Fragment
+                if (uploadFragment != null && uploadFragment!!.isAdded) {
+                    ft.remove(uploadFragment!!)
+                    uploadFragment = null
+                }
+                if (statsFragment != null && statsFragment!!.isAdded) {
+                    ft.remove(statsFragment!!)
+                    statsFragment = null
+                }
+                if (chatFragment != null && chatFragment!!.isAdded) {
+                    ft.remove(chatFragment!!)
+                    chatFragment = null
+                }
             }
         }
         ft.commitAllowingStateLoss()
@@ -396,6 +432,15 @@ class TeacherActivity : AppCompatActivity() {
             .commit()
     }
 
+    /**
+     * 从合集管理跳转到课程上传页，并预选指定合集
+     */
+    fun openUploadWithCollection(collectionId: Int) {
+        pendingUploadCollectionId = collectionId
+        showPanel(1)
+        setActiveNavItem(navUploadCourse)
+    }
+
     // ==================== 侧边栏导航 ====================
 
     private fun setupSidebarNavigation() {
@@ -416,6 +461,11 @@ class TeacherActivity : AppCompatActivity() {
             setActiveNavItem(navMyCourses)
         }
 
+        navCollections.setOnClickListener {
+            showPanel(6)
+            setActiveNavItem(navCollections)
+        }
+
         navStatistics.setOnClickListener {
             showPanel(2)
             setActiveNavItem(navStatistics)
@@ -432,7 +482,7 @@ class TeacherActivity : AppCompatActivity() {
     }
 
     private fun setActiveNavItem(selectedItem: LinearLayout) {
-        val navItems = listOf(navHome, navUploadCourse, navMyCourses, navStatistics, navMessage)
+        val navItems = listOf(navHome, navUploadCourse, navMyCourses, navCollections, navStatistics, navMessage)
         for (item in navItems) {
             item.setBackgroundColor(android.graphics.Color.TRANSPARENT)
             val textView = item.getChildAt(1) as? TextView
