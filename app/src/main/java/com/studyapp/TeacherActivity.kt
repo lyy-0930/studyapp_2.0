@@ -60,6 +60,10 @@ class TeacherActivity : AppCompatActivity() {
     private lateinit var collectionFragmentContainer: FrameLayout
 
     // ==================== 首页 ====================
+    private lateinit var homeBanner: com.studyapp.view.BannerCarousel
+    private lateinit var articleHomeCard: androidx.cardview.widget.CardView
+    private lateinit var articleHomeBody: LinearLayout
+    private var homePanelActive = true
     private lateinit var welcomeTitle: TextView
     private lateinit var welcomeSubtitle: TextView
     private lateinit var quickUpload: LinearLayout
@@ -79,6 +83,8 @@ class TeacherActivity : AppCompatActivity() {
     private var statsFragment: Fragment? = null
     private var collectionFragment: Fragment? = null
     private lateinit var navMessage: LinearLayout
+    private lateinit var navStudentNotes: LinearLayout
+    private lateinit var navArticles: LinearLayout
     private lateinit var chatFragmentContainer: FrameLayout
     private var chatFragment: Fragment? = null
     private var userId: Int = 0
@@ -112,6 +118,65 @@ class TeacherActivity : AppCompatActivity() {
 
         // 默认显示首页
         showPanel(0)
+        // 加载首页轮播图（组件常驻，管理员增删后重启可见）
+        loadHomeBanner()
+        // 加载首页志愿推文（轮播下方推文）
+        loadHomeArticles()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 从发布/详情/管理返回时，若仍停留在首页则刷新推文
+        if (homePanelActive) {
+            loadHomeArticles()
+        }
+    }
+
+    // ==================== 首页志愿推文（轮播下方推文） ====================
+
+    private fun loadHomeArticles() {
+        coroutineScope.launch {
+            val result = apiService.getArticles(3)
+            val list = result.getOrNull().orEmpty()
+            if (list.isEmpty()) {
+                articleHomeCard.visibility = View.GONE
+                return@launch
+            }
+            renderHomeArticles(list)
+        }
+    }
+
+    private fun renderHomeArticles(list: List<com.studyapp.model.Article>) {
+        articleHomeBody.removeAllViews()
+        articleHomeCard.visibility = View.VISIBLE
+        articleHomeBody.addView(
+            com.studyapp.view.ArticleUi.buildHomeHeader(
+                this,
+                canPublish = true, // 教师可发布
+                onPublish = { com.studyapp.view.ArticleUi.openEdit(this, 0) },
+                onViewAll = { com.studyapp.view.ArticleUi.openList(this, manage = false) }
+            )
+        )
+        list.forEach { article ->
+            articleHomeBody.addView(
+                com.studyapp.view.ArticleUi.buildRow(
+                    this, article, manageMode = false,
+                    canManageArticle = false,
+                    onOpen = { com.studyapp.view.ArticleUi.openDetail(this, it) }
+                )
+            )
+        }
+    }
+
+    // ==================== 首页轮播图 ====================
+
+    private fun loadHomeBanner() {
+        coroutineScope.launch {
+            val result = apiService.getBanners()
+            result.onSuccess { list ->
+                homeBanner.setBanners(list)
+            }
+        }
     }
 
     private fun initViews() {
@@ -133,11 +198,16 @@ class TeacherActivity : AppCompatActivity() {
         myCoursesContent = findViewById(R.id.myCoursesContent)
         statsFragmentContainer = findViewById(R.id.statsFragmentContainer)
         navMessage = findViewById(R.id.navMessage)
+        navStudentNotes = findViewById(R.id.navStudentNotes)
+        navArticles = findViewById(R.id.navArticles)
         chatFragmentContainer = findViewById(R.id.chatFragmentContainer)
         questionManageContainer = findViewById(R.id.questionManageContainer)
         collectionFragmentContainer = findViewById(R.id.collectionFragmentContainer)
 
         // 首页
+        homeBanner = findViewById(R.id.homeBanner)
+        articleHomeCard = findViewById(R.id.articleHomeCard)
+        articleHomeBody = findViewById(R.id.articleHomeBody)
         welcomeTitle = findViewById(R.id.welcomeTitle)
         welcomeSubtitle = findViewById(R.id.welcomeSubtitle)
         quickUpload = findViewById(R.id.quickUpload)
@@ -251,6 +321,7 @@ class TeacherActivity : AppCompatActivity() {
 
     fun showPanel(panelIndex: Int) {
         // 0=首页, 1=课程上传, 2=数据统计, 3=消息, 4=我的课程, 5=题目管理, 6=合集管理
+        homePanelActive = panelIndex == 0
         homeContent.visibility = if (panelIndex == 0) View.VISIBLE else View.GONE
         uploadFragmentContainer.visibility = if (panelIndex == 1) View.VISIBLE else View.GONE
         myCoursesContent.visibility = if (panelIndex == 4) View.VISIBLE else View.GONE
@@ -449,6 +520,7 @@ class TeacherActivity : AppCompatActivity() {
         navHome.setOnClickListener {
             showPanel(0)
             setActiveNavItem(navHome)
+            loadHomeArticles()
         }
 
         navUploadCourse.setOnClickListener {
@@ -476,13 +548,23 @@ class TeacherActivity : AppCompatActivity() {
             setActiveNavItem(navMessage)
         }
 
+        navStudentNotes.setOnClickListener {
+            setActiveNavItem(navStudentNotes)
+            startActivity(Intent(this, StudentNotesBrowseActivity::class.java))
+        }
+
+        navArticles.setOnClickListener {
+            setActiveNavItem(navArticles)
+            com.studyapp.view.ArticleUi.openList(this, manage = true)
+        }
+
         navLogout.setOnClickListener {
             showLogoutConfirmationDialog()
         }
     }
 
     private fun setActiveNavItem(selectedItem: LinearLayout) {
-        val navItems = listOf(navHome, navUploadCourse, navMyCourses, navCollections, navStatistics, navMessage)
+        val navItems = listOf(navHome, navUploadCourse, navMyCourses, navCollections, navStatistics, navMessage, navStudentNotes, navArticles)
         for (item in navItems) {
             item.setBackgroundColor(android.graphics.Color.TRANSPARENT)
             val textView = item.getChildAt(1) as? TextView

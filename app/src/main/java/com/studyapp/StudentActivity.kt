@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -28,6 +29,7 @@ import com.studyapp.model.Category
 import com.studyapp.model.Course
 import com.studyapp.model.CourseCollection
 import com.studyapp.model.CourseMaterial
+import com.studyapp.model.Note
 import com.studyapp.model.Question
 import com.studyapp.model.QuizResult
 import com.studyapp.model.toCourse
@@ -54,6 +56,7 @@ class StudentActivity : AppCompatActivity(),
     private lateinit var navMyCourses: LinearLayout
     private lateinit var navSelectCourses: LinearLayout
     private lateinit var navLogout: LinearLayout
+    private lateinit var navMyNotes: LinearLayout
 
     // ==================== 内容容器 ====================
     private lateinit var homeContent: NestedScrollView
@@ -63,8 +66,18 @@ class StudentActivity : AppCompatActivity(),
     private lateinit var navMessage: LinearLayout
     private lateinit var chatFragmentContainer: FrameLayout
     private var chatFragment: Fragment? = null
+    private lateinit var myNotesContent: NestedScrollView
+    private lateinit var myNotesList: LinearLayout
+    private lateinit var myNotesEmptyText: TextView
+    // 我的笔记 · 按课程归类状态：courseId -> 该课笔记（组内已按时间升序）
+    private val noteGroups: LinkedHashMap<Int, MutableList<Note>> = LinkedHashMap()
+    private var noteDetailCourseId: Int = 0   // 0 = 课程列表层；>0 = 正在浏览某课程
 
-    // ==================== 首页（日历 + 学习计划） ====================
+    // ==================== 首页（轮播 + 志愿推文 + 日历 + 学习计划） ====================
+    private lateinit var homeBanner: com.studyapp.view.BannerCarousel
+    private var homeBannerLoaded = false
+    private lateinit var articleHomeCard: androidx.cardview.widget.CardView
+    private lateinit var articleHomeBody: LinearLayout
     private lateinit var currentMonthText: TextView
     private lateinit var prevMonthBtn: TextView
     private lateinit var nextMonthBtn: TextView
@@ -208,6 +221,7 @@ class StudentActivity : AppCompatActivity(),
         navMyCourses = findViewById(R.id.navMyCourses)
         navSelectCourses = findViewById(R.id.navSelectCourses)
         navLogout = findViewById(R.id.navLogout)
+        navMyNotes = findViewById(R.id.navMyNotes)
 
         // 内容容器
         homeContent = findViewById(R.id.homeContent)
@@ -215,8 +229,14 @@ class StudentActivity : AppCompatActivity(),
         selectCoursesContent = findViewById(R.id.selectCoursesContent)
         navMessage = findViewById(R.id.navMessage)
         chatFragmentContainer = findViewById(R.id.chatFragmentContainer)
+        myNotesContent = findViewById(R.id.myNotesContent)
+        myNotesList = findViewById(R.id.myNotesList)
+        myNotesEmptyText = findViewById(R.id.myNotesEmptyText)
 
         // 首页
+        homeBanner = findViewById(R.id.homeBanner)
+        articleHomeCard = findViewById(R.id.articleHomeCard)
+        articleHomeBody = findViewById(R.id.articleHomeBody)
         currentMonthText = findViewById(R.id.currentMonthText)
         prevMonthBtn = findViewById(R.id.prevMonthBtn)
         nextMonthBtn = findViewById(R.id.nextMonthBtn)
@@ -480,13 +500,14 @@ class StudentActivity : AppCompatActivity(),
     // ==================== 面板切换 ====================
 
     private fun showPanel(panelIndex: Int) {
-        // 0=首页, 1=我的课程, 2=选择课程, 3=消息, 4=课程详情, 5=合集详情
+        // 0=首页, 1=我的课程, 2=选择课程, 3=消息, 4=课程详情, 5=合集详情, 6=我的笔记
         homeContent.visibility = if (panelIndex == 0) View.VISIBLE else View.GONE
         myCoursesContent.visibility = if (panelIndex == 1) View.VISIBLE else View.GONE
         selectCoursesContent.visibility = if (panelIndex == 2) View.VISIBLE else View.GONE
         chatFragmentContainer.visibility = if (panelIndex == 3) View.VISIBLE else View.GONE
         courseDetailContent.visibility = if (panelIndex == 4) View.VISIBLE else View.GONE
         collectionDetailContent.visibility = if (panelIndex == 5) View.VISIBLE else View.GONE
+        myNotesContent.visibility = if (panelIndex == 6) View.VISIBLE else View.GONE
 
         if (panelIndex != 3 && chatFragment != null && chatFragment!!.isAdded) {
             supportFragmentManager.beginTransaction()
@@ -497,6 +518,11 @@ class StudentActivity : AppCompatActivity(),
 
         when (panelIndex) {
             0 -> {
+                // 首页轮播图只需拉取一次（管理员增删后重启/重进界面可见）
+                if (!homeBannerLoaded) {
+                    homeBannerLoaded = true
+                    loadHomeBanner()
+                }
                 // 每次进入首页重置到当天
                 val today = Calendar.getInstance()
                 calendarYear = today.get(Calendar.YEAR)
@@ -506,6 +532,7 @@ class StudentActivity : AppCompatActivity(),
                 renderCalendar()
                 updateStudyPlan()
                 loadEnrolledCourses()
+                loadHomeArticles()
             }
             1 -> {
                 loadMyCourses()
@@ -516,7 +543,327 @@ class StudentActivity : AppCompatActivity(),
             3 -> {
                 showChat()
             }
+            6 -> {
+                loadMyNotes()
+            }
         }
+    }
+
+    // ==================== 首页轮播图 ====================
+
+    private fun loadHomeBanner() {
+        coroutineScope.launch {
+            try {
+                val result = apiService.getBanners()
+                result.onSuccess { list ->
+                    homeBanner.setBanners(list)
+                }
+            } catch (e: Exception) {
+                // 轮播只是首页点缀：失败静默，保持 GONE 不打断首页
+            }
+        }
+    }
+
+    // ==================== 首页志愿推文（轮播下方推文） ====================
+
+    private fun loadHomeArticles() {
+        coroutineScope.launch {
+            val result = apiService.getArticles(3)
+            val list = result.getOrNull().orEmpty()
+            if (list.isEmpty()) {
+                articleHomeCard.visibility = View.GONE
+                return@launch
+            }
+            renderHomeArticles(list)
+        }
+    }
+
+    private fun renderHomeArticles(list: List<com.studyapp.model.Article>) {
+        articleHomeBody.removeAllViews()
+        articleHomeCard.visibility = View.VISIBLE
+        val canPublish = com.studyapp.view.ArticleUi.canPublish(this)
+        articleHomeBody.addView(
+            com.studyapp.view.ArticleUi.buildHomeHeader(
+                this,
+                canPublish,
+                onPublish = null, // 学生首页不发布（学生只读）
+                onViewAll = { com.studyapp.view.ArticleUi.openList(this, manage = false) }
+            )
+        )
+        list.forEach { article ->
+            articleHomeBody.addView(
+                com.studyapp.view.ArticleUi.buildRow(
+                    this, article, manageMode = false,
+                    canManageArticle = false,
+                    onOpen = { com.studyapp.view.ArticleUi.openDetail(this, it) }
+                )
+            )
+        }
+    }
+
+    // ==================== 我的笔记 ====================
+
+    private fun noteDp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    private fun fmtNoteTime(seconds: Int): String {
+        val s = seconds.coerceAtLeast(0)
+        val h = s / 3600
+        val m = (s % 3600) / 60
+        val sec = s % 60
+        return if (h > 0) String.format("%d:%02d:%02d", h, m, sec)
+        else String.format("%d:%02d", m, sec)
+    }
+
+    private fun loadMyNotes() {
+        coroutineScope.launch {
+            myNotesList.removeAllViews()
+            noteDetailCourseId = 0
+            noteGroups.clear()
+            val result = withContext(Dispatchers.IO) { apiService.getMyNotes() }
+            if (result.isFailure) {
+                myNotesEmptyText.visibility = View.VISIBLE
+                myNotesEmptyText.text = "加载笔记失败，请稍后重试"
+                return@launch
+            }
+            val notes = result.getOrNull().orEmpty()
+            if (notes.isEmpty()) {
+                myNotesEmptyText.visibility = View.VISIBLE
+                myNotesEmptyText.text = "还没有笔记\n去播放视频，点击右上角“笔记”按钮，随手记一条吧"
+                return@launch
+            }
+            myNotesEmptyText.visibility = View.GONE
+            // 接口已按 updated_at DESC 返回：分组保持该顺序 -> 最近更新的课程在最前
+            notes.forEach { note ->
+                noteGroups.getOrPut(note.courseId) { mutableListOf() }.add(note)
+            }
+            // 组内按视频时间升序展示（一门课的笔记像“大纲”一样从早到晚）
+            noteGroups.values.forEach { list -> list.sortBy { it.timestampSeconds } }
+            renderNoteCourses()
+        }
+    }
+
+    // ---------------- 课程层：一门课 = 一张横排小卡片 ----------------
+
+    private fun renderNoteCourses() {
+        myNotesContent.scrollTo(0, 0)
+        myNotesList.removeAllViews()
+        noteDetailCourseId = 0
+        val entries = noteGroups.entries.toList()
+        entries.forEachIndexed { index, (courseId, list) ->
+            val head = list.firstOrNull()
+            val name = head?.courseName ?: "未命名课程"
+            myNotesList.addView(buildCourseCard(courseId, name, head?.coverUrl, list.size))
+            if (index < entries.size - 1) {
+                val divider = View(this)
+                divider.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, noteDp(1)
+                )
+                divider.setBackgroundColor(0xFFF0F0F0.toInt())
+                myNotesList.addView(divider)
+            }
+        }
+    }
+
+    private fun buildCourseCard(courseId: Int, name: String, coverUrl: String?, noteCount: Int): View {
+        val card = LinearLayout(this)
+        card.orientation = LinearLayout.HORIZONTAL
+        card.gravity = Gravity.CENTER_VERTICAL
+        card.setPadding(0, noteDp(10), 0, noteDp(10))
+        card.isClickable = true
+        card.isFocusable = true
+        card.background = getDrawable(R.drawable.sidebar_item_selector)
+
+        // 左侧：圆角封面缩略图（无图时显示课程名首字）
+        val thumbFrame = FrameLayout(this)
+        thumbFrame.background = getDrawable(R.drawable.bg_note_cover_placeholder)
+        thumbFrame.clipToOutline = true
+        val thumbSize = noteDp(52)
+        card.addView(thumbFrame, LinearLayout.LayoutParams(thumbSize, thumbSize))
+
+        val initialText = TextView(this)
+        initialText.text = name.trim().take(1).ifBlank { "课" }
+        initialText.textSize = 20f
+        initialText.setTypeface(null, Typeface.BOLD)
+        initialText.setTextColor(0xFFFFFFFF.toInt())
+        initialText.gravity = Gravity.CENTER
+        thumbFrame.addView(initialText, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+
+        if (!coverUrl.isNullOrBlank()) {
+            val coverImage = ImageView(this)
+            coverImage.scaleType = ImageView.ScaleType.CENTER_CROP
+            thumbFrame.addView(coverImage, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            val fullUrl = if (coverUrl.startsWith("http")) coverUrl else "${ApiService.BASE_URL}$coverUrl"
+            ImageLoaderUtil.load(coverImage, fullUrl, crossfade = true)
+        }
+
+        // 右侧：课程名 + 笔记条数
+        val info = LinearLayout(this)
+        info.orientation = LinearLayout.VERTICAL
+        info.gravity = Gravity.CENTER_VERTICAL
+        info.setPadding(noteDp(12), 0, 0, 0)
+        card.addView(info, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+        val nameText = TextView(this)
+        nameText.text = name
+        nameText.textSize = 16f
+        nameText.setTypeface(null, Typeface.BOLD)
+        nameText.setTextColor(resources.getColor(R.color.tsinghua_purple_dark))
+        nameText.maxLines = 1
+        nameText.ellipsize = TextUtils.TruncateAt.END
+        info.addView(nameText)
+
+        val countText = TextView(this)
+        countText.text = "📝 共 $noteCount 条笔记"
+        countText.textSize = 13f
+        countText.setTextColor(0xFF999999.toInt())
+        countText.setPadding(0, noteDp(3), 0, 0)
+        info.addView(countText)
+
+        val chevron = TextView(this)
+        chevron.text = "›"
+        chevron.textSize = 24f
+        chevron.setTextColor(0xFFCCCCCC.toInt())
+        chevron.setPadding(noteDp(10), 0, 0, 0)
+        card.addView(chevron)
+
+        card.setOnClickListener { enterNoteCourse(courseId) }
+        return card
+    }
+
+    // ---------------- 课程内层：返回行 + 可展开的带时间点笔记 ----------------
+
+    private fun enterNoteCourse(courseId: Int) {
+        noteDetailCourseId = courseId
+        renderNoteDetail(courseId)
+    }
+
+    private fun renderNoteDetail(courseId: Int) {
+        myNotesContent.scrollTo(0, 0)
+        myNotesList.removeAllViews()
+        val list = noteGroups[courseId].orEmpty()
+        val name = list.firstOrNull()?.courseName ?: "未命名课程"
+
+        val back = TextView(this)
+        back.text = "←  返回全部课程"
+        back.textSize = 14f
+        back.setTypeface(null, Typeface.BOLD)
+        back.setTextColor(resources.getColor(R.color.tsinghua_purple))
+        back.setPadding(0, noteDp(4), 0, noteDp(8))
+        back.isClickable = true
+        back.isFocusable = true
+        back.background = getDrawable(R.drawable.sidebar_item_selector)
+        back.setOnClickListener { renderNoteCourses() }
+        myNotesList.addView(back)
+
+        val title = TextView(this)
+        title.text = name
+        title.textSize = 17f
+        title.setTypeface(null, Typeface.BOLD)
+        title.setTextColor(resources.getColor(R.color.tsinghua_purple_dark))
+        myNotesList.addView(title)
+
+        list.forEachIndexed { index, note ->
+            myNotesList.addView(buildExpandableNoteRow(note))
+            if (index < list.size - 1) {
+                val divider = View(this)
+                divider.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, noteDp(1)
+                )
+                divider.setBackgroundColor(0xFFF0F0F0.toInt())
+                myNotesList.addView(divider)
+            }
+        }
+    }
+
+    /** 一条带时间点的笔记：点一下原地展开全文 + 「去该时刻播放」；再点收起 */
+    private fun buildExpandableNoteRow(note: Note): View {
+        val container = LinearLayout(this)
+        container.orientation = LinearLayout.VERTICAL
+        container.setPadding(0, noteDp(8), 0, noteDp(8))
+        container.isClickable = true
+        container.isFocusable = true
+        container.background = getDrawable(R.drawable.sidebar_item_selector)
+
+        val header = LinearLayout(this)
+        header.orientation = LinearLayout.HORIZONTAL
+        header.gravity = Gravity.CENTER_VERTICAL
+
+        val timeText = TextView(this)
+        timeText.text = "🕐 ${fmtNoteTime(note.timestampSeconds)}"
+        timeText.textSize = 14f
+        timeText.setTypeface(null, Typeface.BOLD)
+        timeText.setTextColor(resources.getColor(R.color.tsinghua_purple))
+        header.addView(timeText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+        val toggleText = TextView(this)
+        toggleText.text = "展开 ▾"
+        toggleText.textSize = 12f
+        toggleText.setTextColor(0xFF999999.toInt())
+        header.addView(toggleText, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            marginStart = noteDp(8)
+        })
+
+        // 正文：折叠时最多 2 行省略，展开时全文
+        val content = TextView(this)
+        content.text = note.content
+        content.textSize = 14f
+        content.setTextColor(0xFF444444.toInt())
+        content.setLineSpacing(0f, 1.15f)
+        content.maxLines = 2
+        content.ellipsize = TextUtils.TruncateAt.END
+        content.setPadding(0, noteDp(6), 0, 0)
+
+        // 展开后出现的“去该时刻播放”
+        val playRow = LinearLayout(this)
+        playRow.orientation = LinearLayout.HORIZONTAL
+        playRow.gravity = Gravity.END
+        playRow.visibility = View.GONE
+        playRow.setPadding(0, noteDp(8), 0, 0)
+
+        val playBtn = TextView(this)
+        playBtn.text = "▶ 去 ${fmtNoteTime(note.timestampSeconds)} 播放"
+        playBtn.textSize = 13f
+        playBtn.setTextColor(0xFFFFFFFF.toInt())
+        playBtn.setTypeface(null, Typeface.BOLD)
+        playBtn.setPadding(noteDp(14), noteDp(6), noteDp(14), noteDp(6))
+        playBtn.background = getDrawable(R.drawable.bg_note_save_button)
+        playBtn.isClickable = true
+        playBtn.isFocusable = true
+        playBtn.setOnClickListener {
+            openNoteInPlayer(note)
+        }
+        playRow.addView(playBtn)
+
+        container.addView(header)
+        container.addView(content)
+        container.addView(playRow)
+
+        var expanded = false
+        container.setOnClickListener {
+            expanded = !expanded
+            toggleText.text = if (expanded) "收起 ▴" else "展开 ▾"
+            content.maxLines = if (expanded) Int.MAX_VALUE else 2
+            content.ellipsize = if (expanded) null else TextUtils.TruncateAt.END
+            playRow.visibility = if (expanded) View.VISIBLE else View.GONE
+        }
+        return container
+    }
+
+    private fun openNoteInPlayer(note: Note) {
+        if (note.videoUrl.isNullOrEmpty()) {
+            Toast.makeText(this, "该课程暂无视频，无法跳转", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = Intent(this, VideoPlayerActivity::class.java).apply {
+            putExtra(VideoPlayerActivity.EXTRA_VIDEO_URL, note.videoUrl)
+            putExtra(VideoPlayerActivity.EXTRA_COURSE_NAME, note.courseName)
+            putExtra("course_id", note.courseId)
+            putExtra(VideoPlayerActivity.EXTRA_START_MS, note.timestampSeconds * 1000L)
+        }
+        startActivity(intent)
     }
 
     private fun showHomeContent() {
@@ -596,13 +943,19 @@ class StudentActivity : AppCompatActivity(),
             currentNavItem = R.id.navMessage
         }
 
+        navMyNotes.setOnClickListener {
+            showPanel(6)
+            setActiveNavItem(navMyNotes)
+            currentNavItem = R.id.navMyNotes
+        }
+
         navLogout.setOnClickListener {
             showLogoutConfirmationDialog()
         }
     }
 
     private fun setActiveNavItem(selectedItem: LinearLayout) {
-        val navItems = listOf(navHome, navMyCourses, navSelectCourses, navMessage)
+        val navItems = listOf(navHome, navMyCourses, navSelectCourses, navMessage, navMyNotes)
         for (item in navItems) {
             item.setBackgroundColor(android.graphics.Color.TRANSPARENT)
             val textView = item.getChildAt(1) as? TextView
@@ -1667,6 +2020,16 @@ class StudentActivity : AppCompatActivity(),
             R.id.navMyCourses -> { showPanel(1) }
             R.id.navSelectCourses -> { showPanel(2) }
             R.id.navMessage -> { showPanel(3) }
+            R.id.navMyNotes -> { showPanel(6) }  // 从播放器返回时刷新（回到课程层）
         }
+    }
+
+    override fun onBackPressed() {
+        // 笔记课程内层时，返回键先退回课程列表，而不是退出整个界面
+        if (noteDetailCourseId != 0) {
+            renderNoteCourses()
+            return
+        }
+        super.onBackPressed()
     }
 }

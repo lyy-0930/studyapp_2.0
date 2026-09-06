@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 志愿推文发布/编辑：封面（可选）+ 标题 + 块正文（段落文字与插图可穿插，顺序即排版顺序） -->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:paddingHorizontal="18dp"
+    android:background="@drawable/gradient_tech_blue_layered"
+    tools:context=".ArticleEditActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 头部：返回 + 标题 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="28dp">
+
+            <ImageButton
+                android:id="@+id/backButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_back"
+                android:background="@drawable/ic_button_background_selector"
+                android:contentDescription="返回"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:id="@+id/editTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="发布推文"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/saveButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:paddingHorizontal="20dp"
+                android:text="发布"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:background="@drawable/bg_article_publish"
+                tools:text="发布" />
+        </LinearLayout>
+
+        <!-- 编辑主体白卡 -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="32dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="6dp"
+            app:cardBackgroundColor="@color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <!-- 封面预览（选中/已有封面后显示） -->
+                <ImageView
+                    android:id="@+id/coverPreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="封面预览"
+                    android:background="@drawable/bg_note_cover_placeholder"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <!-- 封面操作行 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/chooseCoverButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="🖼️  选择封面（可选）"
+                        android:textSize="14sp"
+                        android:textColor="@color/tsinghua_purple_dark" />
+
+                    <TextView
+                        android:id="@+id/removeCoverButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="移除封面"
+                        android:textSize="14sp"
+                        android:textColor="#FFE53935"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <!-- 标题 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="标题"
+                    android:textSize="13sp"
+                    android:textColor="#FF999999"
+                    android:layout_marginTop="16dp" />
+
+                <EditText
+                    android:id="@+id/titleEdit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="请输入推文标题"
+                    android:textSize="18sp"
+                    android:textColor="#FF222222"
+                    android:textStyle="bold"
+                    android:maxLength="120"
+                    android:maxLines="2"
+                    android:backgroundTint="@color/tsinghua_purple" />
+
+                <!-- 正文块区：顶部插入按钮 + 逐块（文字/插图）由代码填充 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="18dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="正文内容"
+                        android:textSize="13sp"
+                        android:textColor="#FF999999" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="可分段文字 · 可插多图 · 顺序即排版"
+                        android:textSize="11sp"
+                        android:textColor="#FFBBBBBB" />
+                </LinearLayout>
+
+                <!-- 块容器：顶部「＋ 开头」快捷条 + 各内容块 + 底部添加按钮，均由代码逐块填充 -->
+                <LinearLayout
+                    android:id="@+id/blocksContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="10dp" />
+
+                <!-- 底部保存按钮 -->
+                <TextView
+                    android:id="@+id/bottomSaveButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:gravity="center"
+                    android:text="发  布"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/white"
+                    android:layout_marginTop="20dp"
+                    android:background="@drawable/bg_article_publish" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

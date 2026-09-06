@@ -1,5 +1,6 @@
 package com.studyapp
 
+import android.graphics.Typeface
 import android.media.MediaPlayer
 import android.content.Context
 import android.content.ClipData
@@ -9,8 +10,17 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
+import android.text.TextUtils
+import android.text.TextWatcher
 import android.util.Log
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.MediaController
 import android.widget.TextView
 import android.widget.Toast
@@ -19,9 +29,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.studyapp.manager.ApiService
 import com.studyapp.manager.OSSConfig
+import com.studyapp.model.Note
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.HashMap
 
 /**
@@ -37,6 +49,39 @@ class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var hintTextView: TextView
     private lateinit var backButton: ImageButton
     private lateinit var speedButton: ImageButton
+    private lateinit var noteButton: ImageButton
+
+    // ==================== 视频笔记（嵌入式分屏 + 随写随存） ====================
+    private var pendingStartMs: Long = 0L          // 从“我的笔记”跳回时定位的毫秒
+    private var videoContainer: View? = null
+    private var noteHandle: View? = null
+    private var notePanel: View? = null
+    private var noteNowText: TextView? = null
+    private var noteCollapseText: TextView? = null
+    private var noteEditText: EditText? = null
+    private var noteSaveStatus: TextView? = null
+    private var noteSaveButton: TextView? = null
+    private var noteListLayout: LinearLayout? = null
+    private var noteListEmpty: TextView? = null
+
+    private var noteOpen = false                   // 笔记面板是否展开
+    private var noteListItems: List<Note> = emptyList()
+    private var editingNoteId: Int? = null         // 当前保存目标笔记id（null=新段落）
+    private var editingAnchorSeconds: Int = 0      // 目标笔记的时间锚点（更新时不变）
+    private var panelOpenAnchorSeconds = 0         // 展开面板瞬间的播放位置，用于就近续写
+    private var suppressNoteTextChange = false     // 程序 setText 时跳过自动保存触发
+    private var noteSaveInFlight = false           // 是否有保存请求在途（单飞行）
+    private var noteSaveQueued = false             // 在途期间又有新内容，保存后再补一次
+    private var noteEditSession = 0                // 切换编辑目标时自增，避免异步结果错乱
+    private var noteWatcherAttached = false        // TextWatcher 只挂一次
+    private var draftAnchorSeconds = 0             // 新条目的时间锚点（动笔那一刻的播放秒）
+    private var draftAnchorCaptured = false        // 本条是否已捕获动笔锚点
+    private var noteWeight = 400                   // 笔记区当前占比权重（0..SPLIT_WEIGHT_TOTAL）
+    private var noteNowRunnable: Runnable? = null  // 每秒刷新“当前播放位置”标签
+    private var noteDragging = false               // 是否正在拖动分隔条
+    private var dragStartRawY = 0f
+    private var dragStartNoteWeight = 0
+    private var pxPerWeightUnit = 1f
 
     private var videoUrlToPlay: String? = null
     private var courseNameToShow: String? = null
@@ -70,7 +115,11 @@ class VideoPlayerActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_VIDEO_URL = "extra_video_url"
         const val EXTRA_COURSE_NAME = "extra_course_name"
+        const val EXTRA_START_MS = "extra_start_ms"
         private const val TAG = "VideoPlayerActivity"
+        private const val SPLIT_WEIGHT_TOTAL = 1000  // 视频/笔记权重基准（仅二者间相对占比）
+        private const val MIN_NOTE_WEIGHT = 180      // 笔记区最小占比（避免把视频挤没）
+        private const val MAX_NOTE_WEIGHT = 820      // 笔记区最大占比（保留一段视频可见）
     }
 
     /**
@@ -266,6 +315,8 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 获取Intent传递的数据
         videoUrlToPlay = intent.getStringExtra(EXTRA_VIDEO_URL)
         courseNameToShow = intent.getStringExtra(EXTRA_COURSE_NAME) ?: "课程视频"
+        // 从“我的笔记”跳回时，可携带起始播放位置（毫秒）
+        pendingStartMs = intent.getLongExtra(EXTRA_START_MS, 0L)
 
         // 设置Activity标题为课程名称
         supportActionBar?.title = courseNameToShow
@@ -353,6 +404,9 @@ class VideoPlayerActivity : AppCompatActivity() {
         speedButton.setOnClickListener {
             showSpeedSelectionDialog()
         }
+
+        noteButton = findViewById(R.id.noteButton)
+        initNotePanel()
 
         // 设置SurfaceHolder回调，确保surface准备好后再设置数据源
         videoView.holder.addCallback(object : android.view.SurfaceHolder.Callback {
@@ -509,6 +563,18 @@ class VideoPlayerActivity : AppCompatActivity() {
                 // 隐藏加载状态
                 showLoading(false)
                 Toast.makeText(this, "视频加载完成，开始播放", Toast.LENGTH_SHORT).show()
+
+                // 从“我的笔记”跳回时，先定位到笔记对应时刻再播放
+                if (pendingStartMs > 0) {
+                    try {
+                        if (pendingStartMs < mediaPlayer.duration) {
+                            videoView.seekTo(pendingStartMs.toInt())
+                            Log.d(TAG, "已定位到笔记时刻: ${pendingStartMs}ms")
+                        }
+                    } catch (_: Exception) {
+                        Log.w(TAG, "定位到指定播放时刻失败: ${pendingStartMs}ms")
+                    }
+                }
 
                 // 自动开始播放
                 videoView.start()
@@ -878,8 +944,478 @@ class VideoPlayerActivity : AppCompatActivity() {
      */
     override fun onPause() {
         super.onPause()
+        // 离开界面时若正在记笔记，先把输入框内容落盘，避免丢失
+        if (noteOpen) {
+            requestNoteSave(fromFlush = true)
+        }
         // 暂停视频播放
         videoView.pause()
+    }
+
+    /** 返回键：笔记分屏展开时先收起，再按一次才退出播放页 */
+    override fun onBackPressed() {
+        if (noteOpen) {
+            closeNotePanel()
+            return
+        }
+        super.onBackPressed()
+    }
+
+    // ==================== 视频笔记：嵌入式分屏 + 随写随存 ====================
+
+    private fun fmtTime(seconds: Int): String {
+        val s = seconds.coerceAtLeast(0)
+        val h = s / 3600
+        val m = (s % 3600) / 60
+        val sec = s % 60
+        return if (h > 0) String.format("%d:%02d:%02d", h, m, sec)
+        else String.format("%d:%02d", m, sec)
+    }
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    private fun currentNoteText(): String = noteEditText?.text?.toString()?.trim() ?: ""
+
+    private fun currentPlaybackSeconds(): Int {
+        var pos = mediaPlayerInstance?.currentPosition ?: 0
+        if (pos <= 0) pos = pendingStartMs.toInt()
+        return (pos / 1000).toInt()
+    }
+
+    /** 初始化笔记分屏：绑定视图 + 收起 + 拖动分隔条 + 自动保存监听 */
+    private fun initNotePanel() {
+        videoContainer = findViewById(R.id.videoContainer)
+        noteHandle = findViewById(R.id.noteHandle)
+        notePanel = findViewById(R.id.notePanel)
+        noteNowText = findViewById(R.id.noteNowText)
+        noteCollapseText = findViewById(R.id.noteCollapseText)
+        noteEditText = findViewById(R.id.noteEditText)
+        noteSaveStatus = findViewById(R.id.noteSaveStatus)
+        noteSaveButton = findViewById(R.id.noteSaveButton)
+        noteListLayout = findViewById(R.id.noteListLayout)
+        noteListEmpty = findViewById(R.id.noteListEmpty)
+
+        noteButton.setOnClickListener { toggleNotePanel() }
+        noteCollapseText?.setOnClickListener { closeNotePanel() }
+        noteSaveButton?.setOnClickListener { requestNoteSave(fromFlush = false) }
+        setupNoteHandleDrag()
+        setupNoteTextWatcher()
+        // 初始为收起状态：视频占满剩余空间
+        closeNotePanel(flush = false)
+    }
+
+    /** 拖动中间分隔条：调整视频 / 笔记的占比 */
+    private fun setupNoteHandleDrag() {
+        val handle = noteHandle ?: return
+        handle.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    noteDragging = true
+                    dragStartRawY = event.rawY
+                    dragStartNoteWeight = noteWeight
+                    val vc = videoContainer ?: return@setOnTouchListener false
+                    val np = notePanel ?: return@setOnTouchListener false
+                    val videoLp = vc.layoutParams as LinearLayout.LayoutParams
+                    val noteLp = np.layoutParams as LinearLayout.LayoutParams
+                    // 每个权重单位约等于多少像素（以拖动瞬间两区块实测高度换算）
+                    val combinedPx = (vc.height + np.height).coerceAtLeast(1).toFloat()
+                    val combinedW = (videoLp.weight + noteLp.weight).coerceAtLeast(1f)
+                    pxPerWeightUnit = combinedPx / combinedW
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!noteDragging || pxPerWeightUnit <= 0f) return@setOnTouchListener true
+                    val dy = event.rawY - dragStartRawY
+                    // 向下拖（dy>0）→ 笔记区变小、视频区变大
+                    var newW = dragStartNoteWeight - (dy / pxPerWeightUnit).toInt()
+                    newW = newW.coerceIn(MIN_NOTE_WEIGHT, MAX_NOTE_WEIGHT)
+                    if (newW != noteWeight) {
+                        noteWeight = newW
+                        applyNoteWeights()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    noteDragging = false
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    /** 文本监听：捕获“动笔那一刻”作为新条目的时间锚点（不再按停顿自动保存） */
+    private fun setupNoteTextWatcher() {
+        val et = noteEditText ?: return
+        if (noteWatcherAttached) return
+        noteWatcherAttached = true
+        et.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                if (suppressNoteTextChange) return
+                // 编辑已有笔记时沿用原锚点，不重新捕获
+                if (editingNoteId != null) return
+                val text = currentNoteText()
+                if (text.isNotEmpty()) {
+                    if (!draftAnchorCaptured) {
+                        draftAnchorSeconds = currentPlaybackSeconds()
+                        draftAnchorCaptured = true
+                        noteSaveStatus?.text =
+                            "本条始于 " + fmtTime(draftAnchorSeconds) + " · 完成后点「保存 ✓」"
+                    }
+                } else if (draftAnchorCaptured) {
+                    // 内容清空 → 重置，下次动笔重新取锚
+                    draftAnchorCaptured = false
+                    draftAnchorSeconds = 0
+                }
+            }
+        })
+    }
+
+    private fun toggleNotePanel() {
+        if (noteOpen) closeNotePanel() else openNotePanel()
+    }
+
+    /** 展开笔记分屏：视频继续播放，仅压缩其高度 */
+    private fun openNotePanel() {
+        if (noteOpen) return
+        if (courseId <= 0) {
+            Toast.makeText(this, "当前视频无法关联课程，暂不能记笔记", Toast.LENGTH_SHORT).show()
+            return
+        }
+        noteOpen = true
+        noteHandle?.visibility = View.VISIBLE
+        notePanel?.visibility = View.VISIBLE
+        applyNoteWeights()
+        // 就近续写依据：展开面板那一刻的播放位置
+        panelOpenAnchorSeconds = currentPlaybackSeconds()
+        noteSaveStatus?.text = "输入内容，点「保存 ✓」存为一条笔记；收起笔记区会自动补存"
+        refreshNotes()
+        startNoteNowTicker()
+    }
+
+    /** 收起笔记分屏（可选：收起前先把输入内容落盘） */
+    private fun closeNotePanel(flush: Boolean = true) {
+        if (noteOpen && flush) {
+            requestNoteSave(fromFlush = true)
+        }
+        noteOpen = false
+        stopNoteNowTicker()
+        noteHandle?.visibility = View.GONE
+        notePanel?.visibility = View.GONE
+        applyNoteWeights()
+        // 收起后隐藏软键盘，避免挤压视频
+        noteEditText?.let {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(it.windowToken, 0)
+        }
+    }
+
+    /** 应用视频/笔记权重占比；收起时视频占满剩余空间 */
+    private fun applyNoteWeights() {
+        val vc = videoContainer ?: return
+        val np = notePanel ?: return
+        val videoLp = vc.layoutParams as LinearLayout.LayoutParams
+        val noteLp = np.layoutParams as LinearLayout.LayoutParams
+        if (noteOpen) {
+            noteLp.weight = noteWeight.toFloat()
+            videoLp.weight = (SPLIT_WEIGHT_TOTAL - noteWeight).toFloat()
+        } else {
+            noteLp.weight = 0f
+            videoLp.weight = 1f
+        }
+        vc.requestLayout()
+        np.requestLayout()
+    }
+
+    /** 每秒刷新“当前播放位置”，让用户知道下一条笔记会落在哪一秒 */
+    private fun startNoteNowTicker() {
+        stopNoteNowTicker()
+        val r = object : Runnable {
+            override fun run() {
+                if (!noteOpen) return
+                noteNowText?.text = "当前 " + fmtTime(currentPlaybackSeconds())
+                mainHandler.postDelayed(this, 500L)
+            }
+        }
+        noteNowRunnable = r
+        mainHandler.post(r)
+    }
+
+    private fun stopNoteNowTicker() {
+        noteNowRunnable?.let { mainHandler.removeCallbacks(it) }
+        noteNowRunnable = null
+    }
+
+    /** 拉取本课程笔记并就近续写（展开面板后自动匹配 ±8 秒内最近的笔记） */
+    private fun refreshNotes() {
+        if (!noteOpen) return
+        noteEditSession++
+        val session = noteEditSession
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) { apiService.getCourseNotes(courseId) }
+            if (session != noteEditSession) return@launch
+            val list = result.getOrNull() ?: emptyList()
+            noteListItems = list.sortedBy { it.timestampSeconds }
+            if (editingNoteId == null && currentNoteText().isEmpty()) {
+                val near = list.minByOrNull { kotlin.math.abs(it.timestampSeconds - panelOpenAnchorSeconds) }
+                if (near != null && kotlin.math.abs(near.timestampSeconds - panelOpenAnchorSeconds) <= 8) {
+                    editingNoteId = near.id
+                    editingAnchorSeconds = near.timestampSeconds
+                    setNoteText(near.content)
+                    noteSaveStatus?.text = "已就近续写 @" + fmtTime(near.timestampSeconds) + " 的笔记"
+                }
+            }
+            renderNoteRows()
+        }
+    }
+
+    /** 程序赋值 EditText 时不触发自动保存 */
+    private fun setNoteText(content: String) {
+        val et = noteEditText ?: return
+        suppressNoteTextChange = true
+        et.setText(content)
+        et.setSelection(et.text.length)
+        suppressNoteTextChange = false
+    }
+
+    private fun renderNoteRows() {
+        val container = noteListLayout ?: return
+        container.removeAllViews()
+        val sorted = noteListItems.sortedBy { it.timestampSeconds }
+        if (sorted.isEmpty()) {
+            noteListEmpty?.visibility = View.VISIBLE
+            return
+        }
+        noteListEmpty?.visibility = View.GONE
+        for (note in sorted) {
+            container.addView(buildNoteRow(note))
+        }
+    }
+
+    private fun buildNoteRow(note: Note): View {
+        val row = LinearLayout(this)
+        row.orientation = LinearLayout.HORIZONTAL
+        row.gravity = Gravity.CENTER_VERTICAL
+        row.setPadding(0, dp(6), 0, dp(6))
+        row.tag = note.id
+
+        if (note.id == editingNoteId) {
+            row.setBackgroundColor(0x1A7D2181.toInt())
+        }
+
+        val timeText = TextView(this)
+        timeText.text = fmtTime(note.timestampSeconds)
+        timeText.textSize = 13f
+        timeText.setTypeface(null, Typeface.BOLD)
+        timeText.setTextColor(resources.getColor(R.color.tsinghua_purple))
+        timeText.setPadding(dp(8), 0, 0, 0)
+        timeText.minWidth = dp(56)
+
+        val snippet = TextView(this)
+        snippet.text = note.content.replace('\n', ' ').take(40)
+        snippet.textSize = 13f
+        snippet.setTextColor(0xFF444444.toInt())
+        snippet.maxLines = 1
+        snippet.ellipsize = TextUtils.TruncateAt.END
+        snippet.setPadding(dp(12), 0, dp(8), 0)
+        snippet.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+
+        row.addView(timeText)
+        row.addView(snippet)
+
+        row.setOnClickListener {
+            loadNoteIntoEditor(note)
+        }
+        row.setOnLongClickListener {
+            confirmDeleteNote(note)
+            true
+        }
+        return row
+    }
+
+    private fun loadNoteIntoEditor(note: Note) {
+        if (editingNoteId == note.id && currentNoteText() == note.content) return
+        // 切换编辑目标前，先把输入框里的草稿落盘
+        requestNoteSave(fromFlush = true)
+        editingNoteId = note.id
+        editingAnchorSeconds = note.timestampSeconds
+        draftAnchorCaptured = false
+        draftAnchorSeconds = 0
+        noteEditSession++
+        setNoteText(note.content)
+        noteSaveStatus?.text =
+            "编辑 @" + fmtTime(note.timestampSeconds) + " · 点「保存 ✓」更新；清空后点保存可放弃编辑"
+        renderNoteRows()
+    }
+
+    private fun confirmDeleteNote(note: Note) {
+        AlertDialog.Builder(this)
+            .setTitle("删除笔记")
+            .setMessage("确定删除这条笔记吗？\n${fmtTime(note.timestampSeconds)} ${note.content.take(20)}")
+            .setPositiveButton("删除") { _, _ -> deleteNote(note) }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun deleteNote(note: Note) {
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) { apiService.deleteCourseNote(courseId, note.id) }
+            if (result.getOrNull() == true) {
+                noteListItems = noteListItems.filter { it.id != note.id }
+                if (editingNoteId == note.id) {
+                    // 删的是当前编辑的笔记 → 回到“新建”状态
+                    editingNoteId = null
+                    editingAnchorSeconds = 0
+                    draftAnchorCaptured = false
+                    draftAnchorSeconds = 0
+                    noteEditSession++
+                    setNoteText("")
+                    noteSaveStatus?.text = "已删除该条，输入内容将保存为新笔记"
+                }
+                renderNoteRows()
+                Toast.makeText(this@VideoPlayerActivity, "笔记已删除", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this@VideoPlayerActivity, "删除失败，请重试", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /** 保存成功后把最新行刷新进弹窗列表（新增或更新） */
+    private fun upsertDialogNote(note: Note) {
+        val updated = mutableListOf<Note>()
+        var found = false
+        for (n in noteListItems) {
+            if (n.id == note.id) {
+                updated.add(note)
+                found = true
+            } else {
+                updated.add(n)
+            }
+        }
+        if (!found) updated.add(note)
+        noteListItems = updated
+        renderNoteRows()
+    }
+
+    // ============ 显式保存：点「保存 ✓」才成段 ============
+
+    /**
+     * 把输入框当前内容保存为一条笔记。
+     * @param fromFlush true = 来自收起/退出界面的自动补存（非用户主动点按钮）
+     */
+    private fun requestNoteSave(fromFlush: Boolean) {
+        if (noteSaveInFlight) {
+            // 有请求在途：标记待补，当前请求完成后自动再存一次
+            noteSaveQueued = true
+            return
+        }
+        val content = currentNoteText()
+        val id = editingNoteId
+        // 输入框为空：
+        //  - 正载入着某条已有笔记 → 放弃本次修改（原笔记保留，不清空为空）
+        //  - 本来就是新笔记状态 → 无内容可存
+        if (content.isEmpty()) {
+            if (id != null) {
+                editingNoteId = null
+                editingAnchorSeconds = 0
+                draftAnchorCaptured = false
+                draftAnchorSeconds = 0
+                noteEditSession++
+                noteSaveStatus?.text = "已放弃修改（原笔记保留），输入内容后点「保存 ✓」另存一条"
+                renderNoteRows()
+            } else if (!fromFlush) {
+                noteSaveStatus?.text = "还没有内容，先写下你的想法"
+            }
+            return
+        }
+        // 编辑已有笔记但内容未变 → 不必发请求
+        if (id != null) {
+            val orig = noteListItems.firstOrNull { it.id == id }?.content ?: ""
+            if (orig == content) {
+                noteSaveStatus?.text = "内容未变，无需保存"
+                return
+            }
+        }
+        val session = noteEditSession
+        // 新条目的锚点 = 动笔那一刻；更新已有笔记则沿用原锚点
+        val anchor = if (id != null) {
+            editingAnchorSeconds
+        } else {
+            if (draftAnchorCaptured) draftAnchorSeconds else currentPlaybackSeconds()
+        }
+        noteSaveInFlight = true
+        setSaveButtonBusy(true)
+        noteSaveStatus?.text = if (id == null) "正在保存新笔记…" else "正在更新…"
+        coroutineScope.launch {
+            val result = if (id == null) {
+                apiService.createCourseNote(courseId, content, anchor)
+            } else {
+                apiService.updateCourseNote(courseId, id, content)
+            }
+            noteSaveInFlight = false
+            setSaveButtonBusy(false)
+            handleNoteSaveResult(session, id == null, content, result, fromFlush)
+            if (noteSaveQueued) {
+                noteSaveQueued = false
+                requestNoteSave(fromFlush)
+            }
+        }
+    }
+
+    /** 保存按钮忙碌状态：请求在途时置灰，防止重复点击 */
+    private fun setSaveButtonBusy(busy: Boolean) {
+        noteSaveButton?.let {
+            it.isEnabled = !busy
+            it.alpha = if (busy) 0.5f else 1f
+        }
+    }
+
+    /**
+     * 处理一次保存结果。规则：
+     * - 保存成功 → 刷新列表行。若请求期间没再输入（内容 == 刚保存的内容）→ 本条“成段”，
+     *   清空输入框便于写下一条；若期间还在输入 → 保留正在输入的内容作为“下一条”草稿
+     *   （锚点将在下一次按键时重新捕获），避免产生重复前缀的笔记。
+     * - 保存失败 → 提示用户重试；自动补存（收起/退出）失败则用 Toast 提醒。
+     */
+    private fun handleNoteSaveResult(
+        session: Int,
+        wasCreate: Boolean,
+        savedContent: String,
+        result: Result<Note>,
+        fromFlush: Boolean
+    ) {
+        val note = result.getOrNull()
+        if (note != null) {
+            upsertDialogNote(note)
+        }
+        if (session != noteEditSession) {
+            // 保存期间用户已切换到别的编辑目标，交给新的状态机处理
+            return
+        }
+        if (note != null) {
+            val keptTyping = currentNoteText().isNotEmpty() && currentNoteText() != savedContent
+            editingNoteId = null
+            editingAnchorSeconds = 0
+            draftAnchorCaptured = false
+            draftAnchorSeconds = 0
+            noteEditSession++
+            if (!keptTyping) {
+                // 本条真正完成：清空输入框
+                setNoteText("")
+            }
+            noteSaveStatus?.text = if (wasCreate) {
+                "✅ 已保存 @" + fmtTime(note.timestampSeconds) + "，可继续写下一条"
+            } else {
+                "✅ 已更新 @" + fmtTime(note.timestampSeconds)
+            }
+        } else {
+            noteSaveStatus?.text = "保存失败，点「保存 ✓」重试"
+            if (fromFlush) {
+                Toast.makeText(this, "网络异常，笔记未能保存", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     /**

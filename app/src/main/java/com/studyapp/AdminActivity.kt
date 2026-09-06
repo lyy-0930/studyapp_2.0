@@ -1,9 +1,12 @@
 package com.studyapp
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
@@ -17,12 +20,14 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.core.content.edit
 import com.studyapp.util.ImageLoaderUtil
 import com.studyapp.manager.ApiService
+import com.studyapp.model.Banner
 import com.studyapp.model.Category
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +44,9 @@ class AdminActivity : AppCompatActivity() {
     private lateinit var navCourseMastery: LinearLayout
     private lateinit var navCategoryManagement: LinearLayout
     private lateinit var navMonitor: LinearLayout
+    private lateinit var navStudentNotes: LinearLayout
+    private lateinit var navBannerManage: LinearLayout
+    private lateinit var navArticles: LinearLayout
     private lateinit var navDataReset: LinearLayout
     private lateinit var navLogout: LinearLayout
 
@@ -54,6 +62,7 @@ class AdminActivity : AppCompatActivity() {
     private lateinit var panelLearningStats: View
     private lateinit var panelCourseMastery: View
     private lateinit var panelCategoryManagement: View
+    private lateinit var panelBannerManage: View
     private lateinit var panelDataReset: View
 
     // ==================== 仪表盘统计卡片 ====================
@@ -111,6 +120,16 @@ class AdminActivity : AppCompatActivity() {
     private lateinit var categoryListContainer: LinearLayout
     private val categories = mutableListOf<Category>()
 
+    // ==================== 面板8：轮播图管理 ====================
+    private lateinit var addBannerBtn: Button
+    private lateinit var bannerEmptyText: TextView
+    private lateinit var bannerListContainer: LinearLayout
+    private val bannerPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) uploadBannerFromUri(uri)
+    }
+
     // ==================== 面板6：数据重置 ====================
     private lateinit var btnDataReset: Button
 
@@ -127,6 +146,8 @@ class AdminActivity : AppCompatActivity() {
     private lateinit var apiService: ApiService
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
     private var currentPanel: Int = 0
+    // 标记是否刚从系统选图/相册返回（此时不能执行 onResume 里“跳回仪表盘”的逻辑）
+    private var resumeFromImagePicker = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -151,8 +172,15 @@ class AdminActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        val fromPicker = resumeFromImagePicker
+        resumeFromImagePicker = false
         if (currentPanel == 7) {
             monitorMediaPlayer?.start()
+            return
+        }
+        if (fromPicker) {
+            // 从系统相册/选图返回：停留在当前面板（如轮播图管理），由上传回调负责刷新列表
+            if (currentPanel == 0) loadDashboardStats()
             return
         }
         if (currentPanel != 0) {
@@ -184,6 +212,9 @@ class AdminActivity : AppCompatActivity() {
         navLearningStats = findViewById(R.id.navLearningStats)
         navCourseMastery = findViewById(R.id.navCourseMastery)
         navCategoryManagement = findViewById(R.id.navCategoryManagement)
+        navStudentNotes = findViewById(R.id.navStudentNotes)
+        navBannerManage = findViewById(R.id.navBannerManage)
+        navArticles = findViewById(R.id.navArticles)
         navDataReset = findViewById(R.id.navDataReset)
         navMonitor = findViewById(R.id.navMonitor)
         navLogout = findViewById(R.id.navLogout)
@@ -200,6 +231,7 @@ class AdminActivity : AppCompatActivity() {
         panelLearningStats = findViewById(R.id.panelLearningStats)
         panelCourseMastery = findViewById(R.id.panelCourseMastery)
         panelCategoryManagement = findViewById(R.id.panelCategoryManagement)
+        panelBannerManage = findViewById(R.id.panelBannerManage)
         panelDataReset = findViewById(R.id.panelDataReset)
 
         // 仪表盘统计卡片
@@ -298,6 +330,11 @@ class AdminActivity : AppCompatActivity() {
         btnAddCategory = findViewById(R.id.btnAddCategory)
         categoryListContainer = findViewById(R.id.categoryListContainer)
 
+        // 面板8：轮播图管理
+        addBannerBtn = findViewById(R.id.addBannerBtn)
+        bannerEmptyText = findViewById(R.id.bannerEmptyText)
+        bannerListContainer = findViewById(R.id.bannerListContainer)
+
         // 面板6：数据重置
         btnDataReset = findViewById(R.id.btnDataReset)
 
@@ -344,6 +381,7 @@ class AdminActivity : AppCompatActivity() {
         panelCategoryManagement.visibility = if (panelIndex == 5) View.VISIBLE else View.GONE
         panelDataReset.visibility = if (panelIndex == 6) View.VISIBLE else View.GONE
         panelMonitor.visibility = if (panelIndex == 7) View.VISIBLE else View.GONE
+        panelBannerManage.visibility = if (panelIndex == 8) View.VISIBLE else View.GONE
 
         when (panelIndex) {
             0 -> loadDashboardStats()
@@ -356,6 +394,7 @@ class AdminActivity : AppCompatActivity() {
                 loadMonitorPanel()
                 monitorMediaPlayer?.start()
             }
+            8 -> loadBannerList()
         }
     }
 
@@ -374,13 +413,23 @@ class AdminActivity : AppCompatActivity() {
             showPanel(7)
             setActiveNavItem(navMonitor)
         }
+        navStudentNotes.setOnClickListener {
+            setActiveNavItem(navStudentNotes)
+            startActivity(Intent(this, StudentNotesBrowseActivity::class.java))
+        }
+        navBannerManage.setOnClickListener { showPanel(8); setActiveNavItem(navBannerManage) }
+        navArticles.setOnClickListener {
+            setActiveNavItem(navArticles)
+            com.studyapp.view.ArticleUi.openList(this, manage = true)
+        }
         navDataReset.setOnClickListener { showPanel(6); setActiveNavItem(navDataReset) }
         navLogout.setOnClickListener { showLogoutConfirmationDialog() }
     }
 
     private fun setActiveNavItem(selectedItem: LinearLayout) {
         val navItems = listOf(navDashboard, navUserManagement, navActivityRanking,
-            navLearningStats, navCourseMastery, navCategoryManagement, navMonitor, navDataReset)
+            navLearningStats, navCourseMastery, navCategoryManagement, navStudentNotes, navMonitor,
+            navBannerManage, navArticles, navDataReset)
         for (item in navItems) {
             item.setBackgroundColor(Color.TRANSPARENT)
             val icon = item.getChildAt(0) as? TextView
@@ -411,6 +460,7 @@ class AdminActivity : AppCompatActivity() {
     private fun setupButtonListeners() {
         btnDataReset.setOnClickListener { showDataResetConfirmationDialog() }
         btnAddCategory.setOnClickListener { addCategory() }
+        addBannerBtn.setOnClickListener { pickBannerImage() }
     }
 
     // ==================== 分类管理 ====================
@@ -620,6 +670,163 @@ class AdminActivity : AppCompatActivity() {
                 200
             )
         }
+    }
+
+    // ==================== 轮播图管理 ====================
+
+    private fun pickBannerImage() {
+        // 先标记再启动选图器：返回时 onResume 不跳回仪表盘，停在“轮播图管理”面板
+        resumeFromImagePicker = true
+        bannerPickerLauncher.launch("image/*")
+    }
+
+    private fun uploadBannerFromUri(uri: Uri) {
+        try {
+            val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
+            val compressed = compressBitmap(bitmap, 1400, 600)
+            val file = java.io.File(cacheDir, "banner_${System.currentTimeMillis()}.jpg")
+            file.outputStream().use { out ->
+                compressed.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            }
+            Toast.makeText(this, "正在上传轮播图...", Toast.LENGTH_SHORT).show()
+            coroutineScope.launch {
+                try {
+                    val result = withContext(Dispatchers.IO) { apiService.addBanner(file) }
+                    if (result.isSuccess) {
+                        loadBannerList()
+                        Toast.makeText(this@AdminActivity, "轮播图上传成功，首页将展示", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@AdminActivity, "上传失败: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this@AdminActivity, "上传出错: ${e.message}", Toast.LENGTH_LONG).show()
+                } finally {
+                    file.delete()
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "图片处理失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun compressBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+        val ratio = minOf(maxWidth.toFloat() / width, maxHeight.toFloat() / height)
+        if (ratio >= 1f) return bitmap
+        val newWidth = (width * ratio).toInt()
+        val newHeight = (height * ratio).toInt()
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+    }
+
+    private fun loadBannerList() {
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                try { apiService.getAdminBanners() } catch (e: Exception) { null }
+            }
+            bannerListContainer.removeAllViews()
+            if (result?.isSuccess == true) {
+                val list = result.getOrNull() ?: emptyList()
+                if (list.isEmpty()) {
+                    bannerEmptyText.visibility = View.VISIBLE
+                    return@launch
+                }
+                bannerEmptyText.visibility = View.GONE
+                for ((index, banner) in list.withIndex()) {
+                    bannerListContainer.addView(createBannerListItem(banner, index))
+                }
+            } else {
+                bannerEmptyText.visibility = View.GONE
+                bannerListContainer.addView(createEmptyView("加载轮播图失败"))
+            }
+        }
+    }
+
+    private fun createBannerListItem(banner: Banner, index: Int): View {
+        val card = CardView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, 0, 0, 10) }
+            radius = 12f
+            elevation = 2f
+            setCardBackgroundColor(Color.WHITE)
+        }
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(12, 10, 12, 10)
+        }
+
+        // 左侧预览缩略图
+        val previewFrame = FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                dp(160), dp(70)
+            )
+            clipToOutline = true
+        }
+        previewFrame.setBackgroundResource(R.drawable.bg_note_cover_placeholder)
+        row.addView(previewFrame)
+        if (banner.imageUrl.isNotBlank()) {
+            val previewIv = ImageView(this).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+            }
+            previewFrame.addView(previewIv, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            ))
+            val fullUrl = if (banner.imageUrl.startsWith("http")) banner.imageUrl
+                          else "${ApiService.BASE_URL}${banner.imageUrl}"
+            ImageLoaderUtil.load(previewIv, fullUrl, crossfade = false)
+        }
+
+        // 中间：序号
+        row.addView(TextView(this).apply {
+            // 按列表顺序连续编号（删增后自动重新排 1、2、3…），不直接用可能断号的 sortOrder
+            text = "第${index + 1}张"
+            textSize = 14f
+            setTextColor(resources.getColor(R.color.tech_blue_dark))
+            typeface = Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                setMargins(dp(12), 0, 0, 0)
+            }
+        })
+
+        // 删除按钮
+        row.addView(Button(this).apply {
+            text = "删除"
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(resources.getColor(R.color.tech_red_alert))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(dp(8), 0, 0, 0) }
+            setOnClickListener { confirmDeleteBanner(banner, index + 1) }
+        })
+        card.addView(row)
+        return card
+    }
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    private fun confirmDeleteBanner(banner: Banner, seq: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("删除轮播图")
+            .setMessage("确定删除第${seq}张轮播图吗？该图将从学生端、教师端首页移除。")
+            .setPositiveButton("删除") { _, _ ->
+                coroutineScope.launch {
+                    val result = withContext(Dispatchers.IO) { apiService.deleteBanner(banner.id) }
+                    if (result.isSuccess && result.getOrNull() == true) {
+                        loadBannerList()
+                        Toast.makeText(this@AdminActivity, "轮播图已删除", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@AdminActivity, "删除失败: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     // ==================== 数据加载：仪表盘 ====================

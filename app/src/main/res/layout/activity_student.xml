@@ -222,6 +222,36 @@
 
             </LinearLayout>
 
+            <!-- 我的笔记 -->
+            <LinearLayout
+                android:id="@+id/navMyNotes"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="📝"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/navMyNotesText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="我的笔记"
+                    android:textSize="15sp"
+                    android:textColor="@color/tsinghua_purple_dark"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
         </LinearLayout>
 
         <!-- 底部退出按钮 -->
@@ -292,6 +322,33 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
+
+                <!-- 首页轮播图（管理员上传，全局统一） -->
+                <com.studyapp.view.BannerCarousel
+                    android:id="@+id/homeBanner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone" />
+
+                <!-- 志愿推文区块（位于轮播图下方；无推文时隐藏） -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/articleHomeCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/articleHomeBody"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp" />
+                </androidx.cardview.widget.CardView>
 
                 <!-- 日历卡片 -->
                 <androidx.cardview.widget.CardView
@@ -1400,6 +1457,77 @@
                         android:textColor="#999999" />
 
                 </LinearLayout>
+
+            </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
+
+        <!-- ==================== 我的笔记内容 ==================== -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/myNotesContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <androidx.cardview.widget.CardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📝 我的笔记"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/tsinghua_purple_dark" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="按课程归类 · 点进课程查看各时间点笔记，展开可跳回对应视频时刻"
+                            android:textSize="12sp"
+                            android:textColor="#999999"
+                            android:layout_marginTop="4dp"
+                            android:layout_marginBottom="8dp" />
+
+                        <LinearLayout
+                            android:id="@+id/myNotesList"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+
+                        <TextView
+                            android:id="@+id/myNotesEmptyText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="还没有笔记\n去播放视频，点击右上角“笔记”按钮，随手记一条吧"
+                            android:textSize="14sp"
+                            android:gravity="center"
+                            android:lineSpacingExtra="4dp"
+                            android:textColor="#999999"
+                            android:padding="24dp"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
 
             </LinearLayout>
 

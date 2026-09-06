@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 志愿推文列表（学生/教师「查看全部」复用同一界面；manage 模式用于教师/管理员管理自己的推文） -->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:paddingHorizontal="20dp"
+    android:background="@drawable/gradient_tech_blue_layered"
+    tools:context=".ArticleListActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 头部：返回 + 标题 + 发布(教师/管理员) + 刷新 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="28dp">
+
+            <ImageButton
+                android:id="@+id/backButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_back"
+                android:background="@drawable/ic_button_background_selector"
+                android:contentDescription="返回"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:id="@+id/pageTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="志愿推文"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/publishButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:paddingHorizontal="16dp"
+                android:text="＋ 发布"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:background="@drawable/bg_article_publish"
+                android:visibility="gone"
+                tools:text="＋ 发布" />
+
+            <ImageButton
+                android:id="@+id/refreshButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_refresh"
+                android:background="@drawable/ic_button_background_selector"
+                android:contentDescription="刷新"
+                tools:ignore="ContentDescription" />
+        </LinearLayout>
+
+        <!-- 说明文案（管理模式显示数据范围提示） -->
+        <TextView
+            android:id="@+id/captionText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="#CCFFFFFF"
+            android:gravity="center"
+            android:layout_marginTop="10dp"
+            android:visibility="gone" />
+
+        <!-- 文章卡片列表（逐条 addView，每条自含白色圆角卡片） -->
+        <LinearLayout
+            android:id="@+id/articleRows"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="14dp"
+            android:paddingBottom="32dp" />
+
+        <!-- 空态 / 加载失败提示 -->
+        <TextView
+            android:id="@+id/emptyText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:padding="36dp"
+            android:textSize="15sp"
+            android:textColor="#FF666666"
+            android:visibility="gone"
+            tools:text="还没有任何推文" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

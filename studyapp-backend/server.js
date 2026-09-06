@@ -105,6 +105,53 @@ const uploadCourseImage = multer({
     }
 });
 
+// ================================
+// 3e. 首页轮播图上传配置
+// ================================
+const bannerImagesDir = path.join(__dirname, 'uploads', 'banners');
+if (!fs.existsSync(bannerImagesDir)) {
+    fs.mkdirSync(bannerImagesDir, { recursive: true });
+}
+
+const bannerStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, bannerImagesDir),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+        cb(null, `banner_${Date.now()}_${Math.round(Math.random() * 1e6)}${ext}`);
+    }
+});
+
+const uploadBanner = multer({
+    storage: bannerStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const allowed = /jpeg|jpg|png|gif|webp/;
+        cb(null, allowed.test(path.extname(file.originalname).toLowerCase()) && allowed.test(file.mimetype));
+    }
+});
+
+const articleCoversDir = path.join(__dirname, 'uploads', 'articles');
+if (!fs.existsSync(articleCoversDir)) {
+    fs.mkdirSync(articleCoversDir, { recursive: true });
+}
+
+const articleCoverStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, articleCoversDir),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+        cb(null, `article_${Date.now()}_${Math.round(Math.random() * 1e6)}${ext}`);
+    }
+});
+
+const uploadArticleCover = multer({
+    storage: articleCoverStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const allowed = /jpeg|jpg|png|gif|webp/;
+        cb(null, allowed.test(path.extname(file.originalname).toLowerCase()) && allowed.test(file.mimetype));
+    }
+});
+
 // 静态文件服务
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -1071,6 +1118,361 @@ app.get('/collections', optionalAuth, async (req, res) => {
     } catch (error) {
         console.error('获取合集列表错误:', error);
         errorResponse(res, '获取合集列表失败', 500);
+    }
+});
+
+// ============================================================
+// 4.7A-bis 首页轮播图（banner）API
+// ============================================================
+
+// 获取启用的轮播图（学生端/教师端首页展示；任意登录角色或未登录均可读）
+// 路径：GET /banners
+app.get('/banners', optionalAuth, async (req, res) => {
+    try {
+        const rows = await db.executeQuery(
+            `SELECT id, image_url AS imageUrl, sort_order AS sortOrder
+             FROM banners
+             WHERE enabled = 1
+             ORDER BY sort_order ASC, id ASC`
+        );
+        successResponse(res, rows, '获取轮播图成功');
+    } catch (error) {
+        console.error('获取轮播图错误:', error);
+        errorResponse(res, '获取轮播图失败', 500);
+    }
+});
+
+// ============================================================
+// 4.7A-bis2 校园动态（文章/推文）API
+// 学生/教师首页轮播图下方推文：教师/管理员发布，学生只读；
+// 发布者本人或管理员可编辑/删除。
+// ============================================================
+
+// ---- 正文结构化块 JSON 辅助（公众号图文）----
+// articles.content 存 JSON 数组：[{type:'text', text:'…'}, {type:'image', url:'/uploads/articles/x.jpg'}, …]
+// 客户端新上传的插图用 {type:'image', f:序号} 占位，序号 = 本次 multipart image 文件的下标。
+
+/** 解析 content 列 → 块数组；旧版纯文本自动兜底为单文本块 */
+function parseContentBlocks(raw) {
+    if (!raw) return [];
+    const s = String(raw).trim();
+    if (s.startsWith('[')) {
+        try {
+            const arr = JSON.parse(s);
+            if (Array.isArray(arr)) return arr;
+        } catch (e) { /* 落入旧版纯文本兜底 */ }
+    }
+    return [{ type: 'text', text: String(raw) }];
+}
+
+/** 拼接所有文本块（压行去空）→ 用于列表摘要 */
+function deriveExcerpt(blocks) {
+    const text = (blocks || [])
+        .filter(b => b && b.type === 'text' && b.text)
+        .map(b => String(b.text).replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .join(' ');
+    if (!text) return '';
+    return text.length > 90 ? text.slice(0, 90) + '…' : text;
+}
+
+/** 收集正文引用的相对图片地址（供更新/删除时清理孤儿文件） */
+function collectArticleImageUrls(blocks) {
+    const urls = [];
+    for (const b of blocks || []) {
+        if (b && b.type === 'image' && b.url) urls.push(b.url);
+    }
+    return urls;
+}
+
+/** 取出图片排版字段：
+ *  width 比例 ∈[0.2,1]；x 水平位置 ∈[0,1]（=占(行宽-图宽)空闲区的比例，0贴左/0.5居中/1贴右，Word 式自由摆放）
+ *  旧字段 align（left/center/right）缺省转换为 x 兼容；全缺省返回空对象（客户端回退满宽居中） */
+function pickImageLayout(b) {
+    const o = {};
+    const w = Number(b.width);
+    if (Number.isFinite(w)) o.width = Math.round(Math.min(Math.max(w, 0.2), 1) * 100) / 100;
+    const xv = Number(b.x);
+    if (Number.isFinite(xv)) {
+        o.x = Math.round(Math.min(Math.max(xv, 0), 1) * 100) / 100;
+    } else {
+        const al = b.align;
+        if (al === 'left' || al === 'center' || al === 'right') {
+            o.x = al === 'left' ? 0 : (al === 'right' ? 1 : 0.5);
+        }
+    }
+    return o;
+}
+
+/** 把客户端 f 占位替换为服务器已保存的图片地址；仅保留白名单字段（type/url/width/x） */
+function resolveBlockImages(blocks, imageFiles) {
+    const files = Array.isArray(imageFiles) ? imageFiles : [];
+    const out = [];
+    for (const b of blocks || []) {
+        if (!b || typeof b !== 'object') continue;
+        if (b.type === 'image') {
+            if (b.f !== undefined && b.f !== null) {
+                const idx = Number(b.f);
+                if (!Number.isInteger(idx) || idx < 0 || !files[idx]) {
+                    throw Object.assign(new Error('正文图片序号无效'), { status: 400 });
+                }
+                out.push(Object.assign({ type: 'image', url: '/uploads/articles/' + files[idx].filename }, pickImageLayout(b)));
+            } else if (b.url) {
+                out.push(Object.assign({ type: 'image', url: String(b.url) }, pickImageLayout(b))); // 保留旧图
+            }
+        } else if (b.type === 'text') {
+            out.push({ type: 'text', text: String(b.text || '') });
+        }
+    }
+    return out;
+}
+
+const ARTICLE_DETAIL_SELECT = `
+    SELECT a.id, a.title, a.content, a.excerpt, a.cover_url AS coverUrl,
+           a.author_id AS authorId, a.author_name AS authorName,
+           a.author_role AS authorRole,
+           a.created_at AS createdAt, a.updated_at AS updatedAt
+    FROM articles a`;
+
+const ARTICLE_LIST_SELECT = `
+    SELECT a.id, a.title, a.cover_url AS coverUrl,
+           a.author_id AS authorId, a.author_name AS authorName,
+           a.author_role AS authorRole,
+           COALESCE(a.excerpt, SUBSTRING(a.content, 1, 90)) AS excerpt,
+           a.created_at AS createdAt, a.updated_at AS updatedAt
+    FROM articles a`;
+
+// 删除文章封面磁盘文件
+function removeArticleCoverFile(coverUrl) {
+    if (!coverUrl) return;
+    const filePath = path.join(__dirname, coverUrl);
+    if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (e) { console.warn('删除文章封面文件失败:', e.message); }
+    }
+}
+
+// 删除正文引用且不再需要的图片磁盘文件（相对地址才删）
+function removeArticleImageFiles(urls) {
+    for (const url of urls || []) {
+        if (!url || !url.startsWith('/uploads/articles/')) continue;
+        removeArticleCoverFile(url);
+    }
+}
+
+/** 文章编辑页统一解析上传正文：解析→校验→替换新图→存块JSON+摘要 */
+function parseArticlePayload(req) {
+    let blocks = [];
+    const rawBlocks = req.body.contentBlocks;
+    if (rawBlocks !== undefined && String(rawBlocks).trim() !== '') {
+        try {
+            blocks = JSON.parse(String(rawBlocks));
+        } catch (e) {
+            throw Object.assign(new Error('正文数据格式错误'), { status: 400 });
+        }
+        if (!Array.isArray(blocks)) {
+            throw Object.assign(new Error('正文数据格式错误'), { status: 400 });
+        }
+        if (blocks.length > 200) {
+            throw Object.assign(new Error('正文块过多（最多200块）'), { status: 400 });
+        }
+    }
+    const imageFiles = (req.files && req.files['image']) || [];
+    const resolved = resolveBlockImages(blocks, imageFiles);
+    const excerpt = deriveExcerpt(resolved);
+    return { blocks: resolved, excerpt, contentJson: JSON.stringify(resolved) };
+}
+
+// 文章列表（学生/教师首页推文区 + “查看全部”列表；最新在前，limit 默认 20）
+// 路径：GET /articles?limit=N
+app.get('/articles', optionalAuth, async (req, res) => {
+    try {
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+        const rows = await db.executeQuery(
+            `${ARTICLE_LIST_SELECT} ORDER BY a.created_at DESC, a.id DESC LIMIT ${limit}`
+        );
+        successResponse(res, rows, '获取文章列表成功');
+    } catch (error) {
+        console.error('获取文章列表错误:', error);
+        errorResponse(res, '获取文章列表失败', 500);
+    }
+});
+
+// 文章详情（公众号阅读页用；正文以 contentBlocks 块数组返回，旧版纯文本兜底）
+// 路径：GET /articles/:id
+app.get('/articles/:id', optionalAuth, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        if (!id || id <= 0) {
+            return errorResponse(res, '参数错误', 400);
+        }
+        const rows = await db.executeQuery(`${ARTICLE_DETAIL_SELECT} WHERE a.id = ?`, [id]);
+        if (rows.length === 0) {
+            return errorResponse(res, '文章不存在', 404);
+        }
+        const row = rows[0];
+        row.contentBlocks = parseContentBlocks(row.content);
+        delete row.content;
+        successResponse(res, row, '获取文章详情成功');
+    } catch (error) {
+        console.error('获取文章详情错误:', error);
+        errorResponse(res, '获取文章详情失败', 500);
+    }
+});
+
+// 发布文章（教师/管理员；multipart：字段 cover 可选封面、image 可多张正文插图、title/contentBlocks 文本字段）
+// 路径：POST /articles
+app.post('/articles', authenticate, requireRole('teacher', 'admin'),
+    uploadArticleCover.fields([{ name: 'cover', maxCount: 1 }, { name: 'image', maxCount: 25 }]),
+    async (req, res) => {
+    try {
+        const title = String(req.body.title || '').trim();
+        if (!title) {
+            return errorResponse(res, '标题不能为空');
+        }
+        if (title.length > 200) {
+            return errorResponse(res, '标题过长（最多200字）');
+        }
+        let payload;
+        try {
+            payload = parseArticlePayload(req);
+        } catch (e) {
+            return errorResponse(res, e.message || '正文数据错误', e.status || 400);
+        }
+        const coverFile = req.files && req.files['cover'] && req.files['cover'][0];
+        const coverUrl = coverFile ? '/uploads/articles/' + coverFile.filename : null;
+
+        // 作者显示名：优先真实姓名，否则登录名
+        const authorRows = await db.executeQuery(
+            `SELECT COALESCE(NULLIF(full_name, ''), username) AS displayName FROM users WHERE id = ?`,
+            [req.user.id]
+        );
+        const authorName = (authorRows[0] && authorRows[0].displayName) || req.user.username || '';
+        const authorRole = req.user.role;
+
+        const result = await db.executeQuery(
+            `INSERT INTO articles (title, content, excerpt, cover_url, author_id, author_name, author_role)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [title, payload.contentJson, payload.excerpt, coverUrl, req.user.id, authorName, authorRole]
+        );
+        const newRows = await db.executeQuery(
+            `${ARTICLE_DETAIL_SELECT} WHERE a.id = ?`, [result.insertId]
+        );
+        const row = newRows[0];
+        row.contentBlocks = parseContentBlocks(row.content);
+        delete row.content;
+        console.log(`✅ 文章 ${result.insertId} 已发布: ${title}`);
+        setImmediate(() => audit(req, { actionType: 'article_add', targetType: 'article', targetId: result.insertId, result: 'success' }));
+        successResponse(res, row, '发布成功');
+    } catch (error) {
+        console.error('发布文章错误:', error);
+        errorResponse(res, '发布文章失败', 500);
+    }
+});
+
+// 更新文章（发布者本人或管理员）
+// multipart：字段 cover 可选（传新图=替换封面）；removeCover=1 表示去掉封面；
+//            image 可多张新增插图；title/contentBlocks 可选
+// 路径：PUT /articles/:id
+app.put('/articles/:id', authenticate, requireRole('teacher', 'admin'),
+    uploadArticleCover.fields([{ name: 'cover', maxCount: 1 }, { name: 'image', maxCount: 25 }]),
+    async (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        if (!id || id <= 0) {
+            return errorResponse(res, '参数错误', 400);
+        }
+        const rows = await db.executeQuery('SELECT cover_url, author_id, content FROM articles WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return errorResponse(res, '文章不存在', 404);
+        }
+        if (req.user.role !== 'admin' && Number(rows[0].author_id) !== Number(req.user.id)) {
+            return errorResponse(res, '只能编辑自己发布的文章', 403);
+        }
+        const oldBlocks = parseContentBlocks(rows[0].content);
+
+        const updates = [];
+        const params = [];
+        if (req.body.title !== undefined) {
+            const t = String(req.body.title).trim();
+            if (!t) {
+                return errorResponse(res, '标题不能为空');
+            }
+            if (t.length > 200) {
+                return errorResponse(res, '标题过长（最多200字）');
+            }
+            updates.push('title = ?');
+            params.push(t);
+        }
+        if (req.body.contentBlocks !== undefined) {
+            let payload;
+            try {
+                payload = parseArticlePayload(req);
+            } catch (e) {
+                return errorResponse(res, e.message || '正文数据错误', e.status || 400);
+            }
+            // 删除旧正文中不再引用的插图磁盘文件
+            const oldUrls = new Set(collectArticleImageUrls(oldBlocks));
+            const newUrls = new Set(collectArticleImageUrls(payload.blocks));
+            const orphanUrls = [...oldUrls].filter(u => !newUrls.has(u));
+            removeArticleImageFiles(orphanUrls);
+            updates.push('content = ?', 'excerpt = ?');
+            params.push(payload.contentJson, payload.excerpt);
+        }
+
+        const removeCover = req.body.removeCover === '1' || req.body.removeCover === true || req.body.removeCover === 'true';
+        if (req.files && req.files['cover'] && req.files['cover'][0]) {
+            removeArticleCoverFile(rows[0].cover_url);
+            updates.push('cover_url = ?');
+            params.push('/uploads/articles/' + req.files['cover'][0].filename);
+        } else if (removeCover) {
+            removeArticleCoverFile(rows[0].cover_url);
+            updates.push('cover_url = NULL');
+        }
+
+        if (updates.length === 0) {
+            return errorResponse(res, '没有需要更新的内容');
+        }
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        params.push(id);
+        await db.executeQuery(`UPDATE articles SET ${updates.join(', ')} WHERE id = ?`, params);
+
+        const newRows = await db.executeQuery(`${ARTICLE_DETAIL_SELECT} WHERE a.id = ?`, [id]);
+        const row = newRows[0];
+        row.contentBlocks = parseContentBlocks(row.content);
+        delete row.content;
+        console.log(`✅ 文章 ${id} 已更新`);
+        setImmediate(() => audit(req, { actionType: 'article_edit', targetType: 'article', targetId: id, result: 'success' }));
+        successResponse(res, row, '更新成功');
+    } catch (error) {
+        console.error('更新文章错误:', error);
+        errorResponse(res, '更新文章失败', 500);
+    }
+});
+
+// 删除文章（发布者本人或管理员；删记录 + 磁盘封面 + 正文插图）
+// 路径：DELETE /articles/:id
+app.delete('/articles/:id', authenticate, requireRole('teacher', 'admin'), async (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        if (!id || id <= 0) {
+            return errorResponse(res, '参数错误', 400);
+        }
+        const rows = await db.executeQuery('SELECT cover_url, author_id, content FROM articles WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return errorResponse(res, '文章不存在', 404);
+        }
+        if (req.user.role !== 'admin' && Number(rows[0].author_id) !== Number(req.user.id)) {
+            return errorResponse(res, '只能删除自己发布的文章', 403);
+        }
+        removeArticleCoverFile(rows[0].cover_url);
+        removeArticleImageFiles(collectArticleImageUrls(parseContentBlocks(rows[0].content)));
+        await db.executeQuery('DELETE FROM articles WHERE id = ?', [id]);
+        console.log(`✅ 文章 ${id} 已删除`);
+        setImmediate(() => audit(req, { actionType: 'article_delete', targetType: 'article', targetId: id, result: 'success' }));
+        successResponse(res, null, '删除成功');
+    } catch (error) {
+        console.error('删除文章错误:', error);
+        errorResponse(res, '删除文章失败', 500);
     }
 });
 
@@ -2762,6 +3164,227 @@ app.post('/study/record', authenticate, async (req, res) => {
     }
 });
 
+// 4.9A 视频笔记（notes）API
+// 功能：播放视频时记录带时间锚点的笔记，支持就近续写、自动保存
+// 安全：userId 一律从认证令牌 req.user.id 获取，不接受客户端传入
+const NOTE_COLS = `
+  n.id AS id, n.user_id AS userId, n.course_id AS courseId,
+  n.course_name AS courseName, n.video_url AS videoUrl,
+  n.timestamp_seconds AS timestampSeconds, n.content AS content,
+  n.created_at AS createdAt, n.updated_at AS updatedAt
+`;
+
+// 获取当前课程下当前用户的笔记（供播放器弹窗近匹配 + 列表）
+// 路径：GET /courses/:courseId/notes
+app.get('/courses/:courseId/notes', authenticate, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const courseId = parseInt(req.params.courseId);
+        if (!courseId) {
+            return errorResponse(res, '课程ID无效');
+        }
+        const rows = await db.executeQuery(
+            `SELECT ${NOTE_COLS} FROM notes n
+             WHERE n.user_id = ? AND n.course_id = ?
+             ORDER BY n.timestamp_seconds ASC`,
+            [userId, courseId]
+        );
+        successResponse(res, rows, '获取课程笔记成功');
+    } catch (error) {
+        console.error('获取课程笔记错误:', error);
+        errorResponse(res, '获取课程笔记失败', 500);
+    }
+});
+
+// 获取当前用户全部课程的笔记（供主页“我的笔记”聚合）
+// 路径：GET /notes/mine
+app.get('/notes/mine', authenticate, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const rows = await db.executeQuery(
+            `SELECT ${NOTE_COLS}, c.image_url AS coverUrl
+             FROM notes n
+             LEFT JOIN courses c ON c.id = n.course_id
+             WHERE n.user_id = ?
+             ORDER BY n.updated_at DESC`,
+            [userId]
+        );
+        successResponse(res, rows, '获取我的笔记成功');
+    } catch (error) {
+        console.error('获取我的笔记错误:', error);
+        errorResponse(res, '获取我的笔记失败', 500);
+    }
+});
+
+// 教师/管理员查看学生笔记（按学生 → 课程 → 笔记 三级浏览的数据源）
+// 安全：只看 role=student 的用户写的笔记；教师仅限自己名下课程（courses.teacher_id = req.user.id），管理员看全部
+// 路径：GET /notes/students
+app.get('/notes/students', authenticate, requireRole('teacher', 'admin'), async (req, res) => {
+    try {
+        let cond = "u.role = 'student'";
+        const params = [];
+        if (req.user.role === 'teacher') {
+            cond += " AND EXISTS (SELECT 1 FROM courses cc WHERE cc.id = n.course_id AND cc.teacher_id = ?)";
+            params.push(req.user.id);
+        }
+        const rows = await db.executeQuery(
+            `SELECT ${NOTE_COLS}, u.username AS userName, u.avatar_url AS avatarUrl,
+                    c.image_url AS coverUrl
+             FROM notes n
+             JOIN users u ON u.id = n.user_id
+             LEFT JOIN courses c ON c.id = n.course_id
+             WHERE ${cond}
+             ORDER BY n.updated_at DESC`,
+            params
+        );
+        successResponse(res, rows, '获取学生笔记成功');
+    } catch (error) {
+        console.error('获取学生笔记错误:', error);
+        errorResponse(res, '获取学生笔记失败', 500);
+    }
+});
+
+// 创建笔记（自动保存首次写入，同一秒幂等去重：命中则更新）
+// 路径：POST /courses/:courseId/notes
+// body: { content: string, timestampSeconds: number }
+app.post('/courses/:courseId/notes', authenticate, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const courseId = parseInt(req.params.courseId);
+        const { content = '', timestampSeconds } = req.body;
+
+        if (!courseId) {
+            return errorResponse(res, '课程ID无效');
+        }
+        const trimmed = String(content).trim();
+        if (!trimmed) {
+            return errorResponse(res, '笔记内容不能为空');
+        }
+        const ts = Math.max(0, parseInt(timestampSeconds) || 0);
+
+        // 取课程快照（名称 + 视频地址）
+        const courses = await db.executeQuery(
+            'SELECT name, video_url FROM courses WHERE id = ?',
+            [courseId]
+        );
+        if (courses.length === 0) {
+            return errorResponse(res, '课程不存在', 404);
+        }
+        const courseName = courses[0].name || '';
+        const courseVideoUrl = courses[0].video_url || null;
+
+        // 同一秒去重：防止重复创建（就近续写/并发双击）
+        const existing = await db.executeQuery(
+            'SELECT id FROM notes WHERE user_id = ? AND course_id = ? AND timestamp_seconds = ? ORDER BY id LIMIT 1',
+            [userId, courseId, ts]
+        );
+        let noteId;
+        if (existing.length > 0) {
+            noteId = existing[0].id;
+            await db.executeQuery(
+                'UPDATE notes SET content = ?, course_name = ?, video_url = ? WHERE id = ?',
+                [trimmed, courseName, courseVideoUrl, noteId]
+            );
+        } else {
+            const result = await db.executeQuery(
+                'INSERT INTO notes (user_id, course_id, timestamp_seconds, content, course_name, video_url) VALUES (?, ?, ?, ?, ?, ?)',
+                [userId, courseId, ts, trimmed, courseName, courseVideoUrl]
+            );
+            noteId = result.insertId;
+        }
+
+        const noteRows = await db.executeQuery(
+            `SELECT ${NOTE_COLS} FROM notes n WHERE n.id = ?`,
+            [noteId]
+        );
+        successResponse(res, noteRows[0] || null, '笔记已保存');
+    } catch (error) {
+        console.error('保存笔记错误:', error);
+        errorResponse(res, '保存笔记失败', 500);
+    }
+});
+
+// 更新笔记内容（自动保存续写；锚点时间永不改变）
+// 路径：PUT /courses/:courseId/notes/:noteId
+// body: { content: string }
+app.put('/courses/:courseId/notes/:noteId', authenticate, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const courseId = parseInt(req.params.courseId);
+        const noteId = parseInt(req.params.noteId);
+        const { content = '' } = req.body;
+
+        if (!courseId || !noteId) {
+            return errorResponse(res, '课程ID或笔记ID无效');
+        }
+        const trimmed = String(content).trim();
+        if (!trimmed) {
+            return errorResponse(res, '笔记内容不能为空');
+        }
+
+        const rows = await db.executeQuery(
+            'SELECT id, user_id FROM notes WHERE id = ? AND course_id = ?',
+            [noteId, courseId]
+        );
+        if (rows.length === 0) {
+            return errorResponse(res, '笔记不存在', 404);
+        }
+        if (Number(rows[0].user_id) !== Number(userId)) {
+            return errorResponse(res, '无权操作其他用户的笔记', 403);
+        }
+
+        // 刷新课程快照，锚点 timestamp_seconds 保持不变
+        const courses = await db.executeQuery(
+            'SELECT name, video_url FROM courses WHERE id = ?',
+            [courseId]
+        );
+        const courseName = courses.length > 0 ? (courses[0].name || '') : '';
+        const courseVideoUrl = courses.length > 0 ? (courses[0].video_url || null) : null;
+        await db.executeQuery(
+            'UPDATE notes SET content = ?, course_name = ?, video_url = ? WHERE id = ?',
+            [trimmed, courseName, courseVideoUrl, noteId]
+        );
+
+        const noteRows = await db.executeQuery(
+            `SELECT ${NOTE_COLS} FROM notes n WHERE n.id = ?`,
+            [noteId]
+        );
+        successResponse(res, noteRows[0] || null, '笔记已更新');
+    } catch (error) {
+        console.error('更新笔记错误:', error);
+        errorResponse(res, '更新笔记失败', 500);
+    }
+});
+
+// 删除笔记
+// 路径：DELETE /courses/:courseId/notes/:noteId
+app.delete('/courses/:courseId/notes/:noteId', authenticate, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const courseId = parseInt(req.params.courseId);
+        const noteId = parseInt(req.params.noteId);
+
+        if (!courseId || !noteId) {
+            return errorResponse(res, '课程ID或笔记ID无效');
+        }
+        const rows = await db.executeQuery(
+            'SELECT id, user_id FROM notes WHERE id = ? AND course_id = ?',
+            [noteId, courseId]
+        );
+        if (rows.length === 0) {
+            return errorResponse(res, '笔记不存在', 404);
+        }
+        if (Number(rows[0].user_id) !== Number(userId)) {
+            return errorResponse(res, '无权操作其他用户的笔记', 403);
+        }
+        await db.executeQuery('DELETE FROM notes WHERE id = ?', [noteId]);
+        successResponse(res, null, '笔记已删除');
+    } catch (error) {
+        console.error('删除笔记错误:', error);
+        errorResponse(res, '删除笔记失败', 500);
+    }
+});
+
 // 4.10 获取用户的会话列表
 // 路径：GET /conversations
 // 功能：获取用户的所有会话（含最后一条消息和未读数）
@@ -4122,6 +4745,80 @@ app.post('/api/oss/play-url', authenticate, (req, res) => {
     }
 });
 
+// 路径：GET /admin/banners
+// 功能：管理员获取轮播图列表（含禁用，按排序）
+app.get('/admin/banners', async (req, res) => {
+    try {
+        const rows = await db.executeQuery(
+            `SELECT id, image_url AS imageUrl, sort_order AS sortOrder, enabled
+             FROM banners ORDER BY sort_order ASC, id ASC`);
+        successResponse(res, rows, '获取轮播图列表成功');
+    } catch (error) {
+        console.error('获取轮播图列表错误:', error);
+        errorResponse(res, '获取轮播图列表失败', 500);
+    }
+});
+
+// 路径：POST /admin/banners
+// 功能：管理员上传轮播图（multipart 字段 image），追加到末尾
+app.post('/admin/banners', uploadBanner.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return errorResponse(res, '请选择要上传的图片');
+        }
+        // 计算下一个排序号（追加到末尾）
+        const maxRows = await db.executeQuery('SELECT COALESCE(MAX(sort_order), 0) AS maxOrder FROM banners');
+        const nextOrder = (maxRows[0] && maxRows[0].maxOrder || 0) + 1;
+        const imageUrl = '/uploads/banners/' + req.file.filename;
+
+        const result = await db.executeQuery(
+            'INSERT INTO banners (image_url, sort_order) VALUES (?, ?)',
+            [imageUrl, nextOrder]);
+        const newRows = await db.executeQuery(
+            'SELECT id, image_url AS imageUrl, sort_order AS sortOrder, enabled FROM banners WHERE id = ?',
+            [result.insertId]);
+
+        console.log(`✅ 轮播图 ${result.insertId} 已上传: ${imageUrl}`);
+        setImmediate(() => audit(req, { actionType: 'banner_add', targetType: 'banner', targetId: result.insertId, result: 'success' }));
+        successResponse(res, newRows[0], '轮播图上传成功');
+    } catch (error) {
+        console.error('轮播图上传错误:', error);
+        errorResponse(res, '轮播图上传失败', 500);
+    }
+});
+
+// 路径：DELETE /admin/banners/:id
+// 功能：管理员删除轮播图（删记录 + 磁盘文件）
+app.delete('/admin/banners/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        if (!id || id <= 0) {
+            return errorResponse(res, '参数错误', 400);
+        }
+        const rows = await db.executeQuery('SELECT image_url FROM banners WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return errorResponse(res, '轮播图不存在', 404);
+        }
+
+        // 删除磁盘文件
+        const imageUrl = rows[0].image_url;
+        if (imageUrl) {
+            const filePath = path.join(__dirname, imageUrl);
+            if (fs.existsSync(filePath)) {
+                try { fs.unlinkSync(filePath); } catch (e) { console.warn('删除轮播图文件失败:', e.message); }
+            }
+        }
+
+        await db.executeQuery('DELETE FROM banners WHERE id = ?', [id]);
+        console.log(`✅ 轮播图 ${id} 已删除`);
+        setImmediate(() => audit(req, { actionType: 'banner_delete', targetType: 'banner', targetId: id, result: 'success' }));
+        successResponse(res, null, '轮播图删除成功');
+    } catch (error) {
+        console.error('删除轮播图错误:', error);
+        errorResponse(res, '删除轮播图失败', 500);
+    }
+});
+
 // ================================
 // 6. 错误处理中间件
 // ================================
@@ -4551,6 +5248,102 @@ async function startServer() {
             console.log('✅ course_slide_texts表创建/已存在');
         } catch (error) {
             console.warn('⚠️  创建course_slide_texts表时出现错误:', error.message);
+        }
+
+        // 笔记表 notes
+        try {
+            await db.executeQuery(`
+                CREATE TABLE IF NOT EXISTS notes (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    course_id INT NOT NULL,
+                    timestamp_seconds INT NOT NULL,
+                    content TEXT NOT NULL,
+                    course_name VARCHAR(255) NOT NULL DEFAULT '',
+                    video_url VARCHAR(500) DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_notes_user (user_id),
+                    INDEX idx_notes_course (course_id),
+                    INDEX idx_notes_user_course (user_id, course_id),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `);
+            console.log('✅ notes表创建/已存在');
+        } catch (error) {
+            console.warn('⚠️  创建notes表时出现错误:', error.message);
+        }
+
+        // 轮播图表 banners
+        try {
+            await db.executeQuery(`
+                CREATE TABLE IF NOT EXISTS banners (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    image_url VARCHAR(500) NOT NULL,
+                    sort_order INT DEFAULT 0,
+                    enabled TINYINT(1) DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `);
+            console.log('✅ banners表创建/已存在');
+        } catch (error) {
+            console.warn('⚠️  创建banners表时出现错误:', error.message);
+        }
+
+        // 校园动态文章表 articles
+        try {
+            await db.executeQuery(`
+                CREATE TABLE IF NOT EXISTS articles (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    title VARCHAR(200) NOT NULL,
+                    content TEXT,
+                    cover_url VARCHAR(500) DEFAULT NULL,
+                    author_id INT NOT NULL,
+                    author_name VARCHAR(100) DEFAULT NULL,
+                    author_role VARCHAR(20) DEFAULT 'teacher',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `);
+            console.log('✅ articles表创建/已存在');
+        } catch (error) {
+            console.warn('⚠️  创建articles表时出现错误:', error.message);
+        }
+
+        // 图文正文升级：content 改为 LONGTEXT（存结构化块 JSON）+ 新增 excerpt 摘要列
+        try {
+            await db.executeQuery('ALTER TABLE articles MODIFY content LONGTEXT');
+        } catch (error) {
+            console.warn('⚠️  articles.content 改为 LONGTEXT 时出现错误:', error.message);
+        }
+        try {
+            await db.executeQuery('ALTER TABLE articles ADD COLUMN excerpt VARCHAR(300) DEFAULT NULL AFTER content');
+            console.log('✅ 已添加 excerpt 字段到 articles 表');
+        } catch (error) {
+            if (error.code === 'ER_DUP_FIELDNAME') {
+                console.log('ℹ️  excerpt 字段已存在');
+            } else {
+                console.warn('⚠️  添加 excerpt 字段到 articles 表时出现错误:', error.message);
+            }
+        }
+        // 旧版纯文本正文 → 迁移为单文本块 JSON + 回填摘要
+        try {
+            const legacy = await db.executeQuery(
+                `SELECT id, content FROM articles
+                 WHERE excerpt IS NULL OR excerpt = ''
+                      OR content IS NOT NULL AND content NOT LIKE '[%'`);
+            for (const row of legacy) {
+                const blocks = parseContentBlocks(row.content);
+                const excerpt = deriveExcerpt(blocks);
+                await db.executeQuery(
+                    `UPDATE articles SET content = ?, excerpt = ? WHERE id = ?`,
+                    [JSON.stringify(blocks), excerpt, row.id]
+                );
+            }
+            if (legacy.length > 0) console.log(`✅ 已迁移 ${legacy.length} 条旧版纯文本正文为块格式`);
+        } catch (error) {
+            console.warn('⚠️  迁移旧版文章正文时出现错误:', error.message);
         }
 
         // 启动HTTP服务器

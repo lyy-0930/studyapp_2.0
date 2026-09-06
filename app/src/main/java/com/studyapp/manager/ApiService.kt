@@ -20,6 +20,10 @@ import com.studyapp.model.StudentStatsData
 import com.studyapp.model.StudentStatsResponse
 import com.studyapp.model.CourseCreateResponse
 import com.studyapp.model.EnrollCourseResponse
+import com.studyapp.model.Note
+import com.studyapp.model.Banner
+import com.studyapp.model.Article
+import com.studyapp.model.ArticleBlock
 import com.studyapp.model.StudyRecordResponse
 import com.studyapp.model.TeacherStatsResponse
 import com.studyapp.model.TeacherStatsData
@@ -734,6 +738,65 @@ class ApiService private constructor(val context: Context) {
                     return doMultipart(false) // 重试一次
                 }
                 throw IOException("HTTP $code")
+            } finally { conn.disconnect() }
+        }
+        return doMultipart(true)
+    }
+
+    /** multipart 里的一个文件部件：可重复同名字段（如多张正文插图都用 "image"） */
+    private data class MultipartPart(val field: String, val filename: String, val bytes: ByteArray, val mimeType: String)
+
+    /**
+     * 通用 multipart/form-data 请求（POST/PUT 均可；支持封面 + 多张正文插图等任意字段）
+     * - fields：普通文本字段
+     * - fileParts：文件部件；同名字段可重复（配合 multer.fields([{name,maxCount}])）
+     *   无文件时传空 list 只发送文本字段
+     */
+    private fun httpSendMultipart(
+        fullUrl: String,
+        method: String,
+        fields: Map<String, String>,
+        fileParts: List<MultipartPart> = emptyList()
+    ): String {
+        fun doMultipart(tokenOk: Boolean): String {
+            val boundary = "Boundary_${System.currentTimeMillis()}"
+            val lineEnd = "\r\n"
+            val twoHyphens = "--"
+            val url = URL(fullUrl)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = method
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            conn.connectTimeout = 30000
+            conn.readTimeout = 30000
+            addAuthHeader(conn, context)
+            try {
+                val out = conn.outputStream
+                for ((key, value) in fields) {
+                    out.write("$twoHyphens$boundary$lineEnd".toByteArray())
+                    out.write("Content-Disposition: form-data; name=\"$key\"$lineEnd$lineEnd".toByteArray())
+                    out.write("$value$lineEnd".toByteArray())
+                }
+                for (part in fileParts) {
+                    out.write("$twoHyphens$boundary$lineEnd".toByteArray())
+                    out.write("Content-Disposition: form-data; name=\"${part.field}\"; filename=\"${part.filename}\"$lineEnd".toByteArray())
+                    out.write("Content-Type: ${part.mimeType}$lineEnd$lineEnd".toByteArray())
+                    out.write(part.bytes)
+                    out.write(lineEnd.toByteArray())
+                }
+                out.write("$twoHyphens$boundary$twoHyphens$lineEnd".toByteArray())
+                out.flush()
+                out.close()
+
+                val code = conn.responseCode
+                if (code == HttpURLConnection.HTTP_OK || code == HttpURLConnection.HTTP_CREATED) {
+                    return conn.inputStream.bufferedReader().readText()
+                }
+                if (code == 401 && tokenOk && tryRefreshToken()) {
+                    return doMultipart(false) // 重试一次
+                }
+                val errorBody = try { conn.errorStream?.bufferedReader()?.readText() ?: "" } catch (e: Exception) { "" }
+                throw IOException("HTTP $code: $errorBody")
             } finally { conn.disconnect() }
         }
         return doMultipart(true)
@@ -1956,6 +2019,397 @@ class ApiService private constructor(val context: Context) {
                 Result.failure(e)
             }
         }
+    }
+
+    // ==================== 视频笔记 ====================
+
+    suspend fun getCourseNotes(courseId: Int): Result<List<Note>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/courses/$courseId/notes")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<Note>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseNote(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "获取课程笔记失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getMyNotes(): Result<List<Note>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/notes/mine")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<Note>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseNote(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "获取我的笔记失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // 教师/管理员查看学生笔记（数据范围由 token 角色决定：教师=自己课程的学生，管理员=全部）
+    suspend fun getStudentNotes(): Result<List<Note>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/notes/students")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<Note>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseNote(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "获取学生笔记失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun createCourseNote(courseId: Int, content: String, timestampSeconds: Int): Result<Note> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = buildJson("content" to content, "timestampSeconds" to timestampSeconds)
+                val responseBody = httpPost("$BASE_URL/courses/$courseId/notes", body)
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataObj = root.optJSONObject("data")
+                    Result.success(if (dataObj != null) parseNote(dataObj) else Note())
+                } else {
+                    Result.failure(IOException(root.optString("message", "保存笔记失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun updateCourseNote(courseId: Int, noteId: Int, content: String): Result<Note> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = buildJson("content" to content)
+                val responseBody = httpPut("$BASE_URL/courses/$courseId/notes/$noteId", body)
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataObj = root.optJSONObject("data")
+                    Result.success(if (dataObj != null) parseNote(dataObj) else Note())
+                } else {
+                    Result.failure(IOException(root.optString("message", "更新笔记失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun deleteCourseNote(courseId: Int, noteId: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val code = httpDelete("$BASE_URL/courses/$courseId/notes/$noteId")
+                Result.success(code == 200)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // ==================== 首页轮播图 API ====================
+
+    private fun parseBanner(o: JSONObject): Banner {
+        return Banner(
+            id = o.optInt("id", 0),
+            imageUrl = o.optString("imageUrl", ""),
+            sortOrder = o.optInt("sortOrder", 0),
+            enabled = o.optBoolean("enabled", true)
+        )
+    }
+
+    // 学生端/教师端首页：获取启用的轮播图（任意登录即可）
+    suspend fun getBanners(): Result<List<Banner>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/banners")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<Banner>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseBanner(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "获取轮播图失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // 管理员：获取全部轮播图（含禁用）
+    suspend fun getAdminBanners(): Result<List<Banner>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/admin/banners")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<Banner>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseBanner(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "获取轮播图列表失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // 管理员：上传轮播图（multipart 字段 image）
+    suspend fun addBanner(file: File): Result<Banner> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val mimeType = when (file.extension.lowercase()) {
+                    "png" -> "image/png"
+                    "gif" -> "image/gif"
+                    "webp" -> "image/webp"
+                    "jpg", "jpeg" -> "image/jpeg"
+                    else -> "image/jpeg"
+                }
+                val responseBody = httpPostMultipart(
+                    "$BASE_URL/admin/banners",
+                    emptyMap(),
+                    "image", file.name, file.readBytes(), mimeType
+                )
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataObj = root.optJSONObject("data")
+                    Result.success(if (dataObj != null) parseBanner(dataObj) else Banner())
+                } else {
+                    Result.failure(IOException(root.optString("message", "上传轮播图失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // 管理员：删除轮播图
+    suspend fun deleteBanner(id: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val code = httpDelete("$BASE_URL/admin/banners/$id")
+                Result.success(code == 200)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // ==================== 志愿推文 API ====================
+
+    /** 解析正文块数组 contentBlocks（text/image 混排）；服务端对旧版纯文本已自动兜底为单文本块 */
+    private fun parseContentBlocks(o: JSONObject?): List<ArticleBlock> {
+        val arr = o?.optJSONArray("contentBlocks") ?: return emptyList()
+        val list = mutableListOf<ArticleBlock>()
+        for (i in 0 until arr.length()) {
+            val b = arr.optJSONObject(i) ?: continue
+            if (b.optString("type", "text") == "image") {
+                val u = if (b.isNull("url")) null else b.optString("url", "")
+                val w = if (b.has("width")) b.optDouble("width", 1.0).toFloat() else null
+                val xv = if (b.has("x")) b.optDouble("x", 0.5).toFloat() else null
+                val al = if (b.has("align")) b.optString("align", "center") else null
+                list.add(ArticleBlock(type = "image", url = u, width = w, x = xv, align = al))
+            } else {
+                list.add(ArticleBlock(type = "text", text = b.optString("text", "")))
+            }
+        }
+        return list
+    }
+
+    private fun parseArticle(o: JSONObject): Article {
+        val rawContent = o.optString("content", "")
+        val blocks = parseContentBlocks(o).ifEmpty {
+            // 兜底：旧版/异常响应只有 content 字段时当作单段文本
+            if (rawContent.isNotBlank()) listOf(ArticleBlock(type = "text", text = rawContent)) else emptyList()
+        }
+        return Article(
+            id = o.optInt("id", 0),
+            title = o.optString("title", ""),
+            contentBlocks = blocks,
+            excerpt = o.optString("excerpt", ""),
+            coverUrl = if (o.isNull("coverUrl")) null else o.optString("coverUrl", ""),
+            authorId = o.optInt("authorId", 0),
+            authorName = o.optString("authorName", ""),
+            authorRole = o.optString("authorRole", ""),
+            createdAt = o.optString("createdAt", ""),
+            updatedAt = o.optString("updatedAt", "")
+        )
+    }
+
+    private fun imageMime(fileName: String): String = when (fileName.substringAfterLast('.', "").lowercase()) {
+        "png" -> "image/png"
+        "gif" -> "image/gif"
+        "webp" -> "image/webp"
+        "jpg", "jpeg" -> "image/jpeg"
+        else -> "image/jpeg"
+    }
+
+    // 学生端/教师端首页 & 全部列表：获取推文列表（最新在前）
+    suspend fun getArticles(limit: Int = 20): Result<List<Article>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/articles?limit=$limit")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataArray = root.optJSONArray("data")
+                    val list = mutableListOf<Article>()
+                    if (dataArray != null) {
+                        for (i in 0 until dataArray.length()) {
+                            list.add(parseArticle(dataArray.getJSONObject(i)))
+                        }
+                    }
+                    Result.success(list)
+                } else {
+                    Result.failure(IOException(root.optString("message", "获取推文失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // 推文详情（含 contentBlocks 图文正文，公众号阅读页用）
+    suspend fun getArticleDetail(id: Int): Result<Article> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val responseBody = httpGet("$BASE_URL/articles/$id")
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataObj = root.optJSONObject("data")
+                    Result.success(if (dataObj != null) parseArticle(dataObj) else Article())
+                } else {
+                    Result.failure(IOException(root.optString("message", "获取推文详情失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // 发布推文（教师/管理员）
+    // contentBlocksJson：正文块 JSON；其中新插图用 {"type":"image","f":序号} 占位，
+    //                     序号 = 它在 imageFiles 中的下标（须按序上传）
+    // coverFile 为空则不设封面；imageFiles 为空则只发文本字段
+    suspend fun createArticle(title: String, contentBlocksJson: String, coverFile: File? = null, imageFiles: List<File> = emptyList()): Result<Article> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val parts = mutableListOf<MultipartPart>()
+                coverFile?.let { f -> parts.add(MultipartPart("cover", f.name, f.readBytes(), imageMime(f.name))) }
+                imageFiles.forEach { f -> parts.add(MultipartPart("image", f.name, f.readBytes(), imageMime(f.name))) }
+                val responseBody = httpSendMultipart(
+                    "$BASE_URL/articles", "POST",
+                    mapOf("title" to title, "contentBlocks" to contentBlocksJson),
+                    parts
+                )
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataObj = root.optJSONObject("data")
+                    Result.success(if (dataObj != null) parseArticle(dataObj) else Article())
+                } else {
+                    Result.failure(IOException(root.optString("message", "发布失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // 更新推文（发布者本人/管理员）
+    // coverFile 传新图=替换封面；removeCover=true=去掉封面；imageFiles 为新增插图文件
+    suspend fun updateArticle(id: Int, title: String, contentBlocksJson: String, coverFile: File? = null, removeCover: Boolean = false, imageFiles: List<File> = emptyList()): Result<Article> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val parts = mutableListOf<MultipartPart>()
+                coverFile?.let { f -> parts.add(MultipartPart("cover", f.name, f.readBytes(), imageMime(f.name))) }
+                imageFiles.forEach { f -> parts.add(MultipartPart("image", f.name, f.readBytes(), imageMime(f.name))) }
+                val fields = mutableMapOf("title" to title, "contentBlocks" to contentBlocksJson)
+                if (removeCover) fields["removeCover"] = "1"
+                val responseBody = httpSendMultipart("$BASE_URL/articles/$id", "PUT", fields, parts)
+                val root = JSONObject(responseBody)
+                if (root.optBoolean("success", false)) {
+                    val dataObj = root.optJSONObject("data")
+                    Result.success(if (dataObj != null) parseArticle(dataObj) else Article())
+                } else {
+                    Result.failure(IOException(root.optString("message", "更新失败")))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // 删除文章（发布者本人/管理员）
+    suspend fun deleteArticle(id: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val code = httpDelete("$BASE_URL/articles/$id")
+                Result.success(code == 200)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    private fun parseNote(o: JSONObject): Note {
+        return Note(
+            id = o.optInt("id", 0),
+            userId = o.optInt("userId", 0),
+            userName = o.optString("userName", ""),
+            avatarUrl = if (o.isNull("avatarUrl")) null else o.optString("avatarUrl", ""),
+            courseId = o.optInt("courseId", 0),
+            courseName = o.optString("courseName", ""),
+            videoUrl = if (o.isNull("videoUrl")) null else o.optString("videoUrl", ""),
+            coverUrl = if (o.isNull("coverUrl")) null else o.optString("coverUrl", ""),
+            timestampSeconds = o.optInt("timestampSeconds", 0),
+            content = o.optString("content", ""),
+            createdAt = if (o.isNull("createdAt")) null else o.optString("createdAt", ""),
+            updatedAt = if (o.isNull("updatedAt")) null else o.optString("updatedAt", "")
+        )
     }
 
     // ==================== 管理员 API ====================

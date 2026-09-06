@@ -271,6 +271,96 @@
 
             </LinearLayout>
 
+            <!-- 学生笔记 -->
+            <LinearLayout
+                android:id="@+id/navStudentNotes"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="📓"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="学生笔记"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 轮播图管理 -->
+            <LinearLayout
+                android:id="@+id/navBannerManage"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="🖼️"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="轮播图管理"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
+            <!-- 志愿推文 -->
+            <LinearLayout
+                android:id="@+id/navArticles"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="@drawable/sidebar_item_selector"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:text="📰"
+                    android:textSize="16sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="志愿推文"
+                    android:textSize="15sp"
+                    android:textColor="@color/darker_gray"
+                    android:textStyle="bold"
+                    android:layout_marginStart="14dp" />
+
+            </LinearLayout>
+
             <!-- 数据重置 -->
             <LinearLayout
                 android:id="@+id/navDataReset"
@@ -1854,6 +1944,70 @@
                     <!-- 分类列表 -->
                     <LinearLayout
                         android:id="@+id/categoryListContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+            </androidx.core.widget.NestedScrollView>
+
+            <!-- ===== 面板8：轮播图管理 ===== -->
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/panelBannerManage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🖼️ 轮播图管理"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/tech_blue_dark"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="上传的轮播图会在学生端、教师端首页顶部自动展示（建议传 3:1 横向宽图）"
+                        android:textSize="13sp"
+                        android:textColor="@color/darker_gray"
+                        android:layout_marginBottom="20dp" />
+
+                    <!-- 添加图片按钮 -->
+                    <Button
+                        android:id="@+id/addBannerBtn"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="＋ 添加图片"
+                        android:textSize="15sp"
+                        android:background="@drawable/ic_button_background"
+                        android:textColor="@color/white"
+                        android:layout_marginBottom="8dp" />
+
+                    <!-- 空态 -->
+                    <TextView
+                        android:id="@+id/bannerEmptyText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="还没有轮播图，点上方按钮添加"
+                        android:textSize="14sp"
+                        android:textColor="@color/darker_gray"
+                        android:gravity="center"
+                        android:padding="32dp"
+                        android:visibility="gone" />
+
+                    <!-- 轮播图列表 -->
+                    <LinearLayout
+                        android:id="@+id/bannerListContainer"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical" />

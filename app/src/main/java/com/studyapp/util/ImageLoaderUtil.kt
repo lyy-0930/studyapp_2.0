@@ -65,6 +65,49 @@ object ImageLoaderUtil {
     }
 
     /**
+     * 自适应真实宽高比加载（公众号正文插图用）
+     * 图片铺满给定 widthPx 宽度，高度 = width × 图片实际高/宽（可让竖图变高、横图变矮）
+     * 加载成功后才按实际比例设置 ImageView 的宽高，避免拉伸或留白
+     */
+    fun loadAdaptive(
+        imageView: ImageView,
+        url: String?,
+        widthPx: Int,
+        crossfade: Boolean = false
+    ) {
+        if (url.isNullOrEmpty() || widthPx <= 0) return
+        executor.execute {
+            try {
+                val bitmap = downloadBitmap(url) ?: return@execute
+                val w = bitmap.width.coerceAtLeast(1)
+                val h = (widthPx.toLong() * bitmap.height / w).toInt().coerceAtLeast(1)
+                mainHandler.post {
+                    val lp = imageView.layoutParams
+                    if (lp != null) {
+                        lp.width = widthPx
+                        lp.height = h
+                        imageView.layoutParams = lp
+                    }
+                    imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                    if (crossfade) {
+                        imageView.alpha = 0f
+                        imageView.setImageBitmap(bitmap)
+                        imageView.animate().alpha(1f).setDuration(250).start()
+                    } else {
+                        imageView.setImageBitmap(bitmap)
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    /**
+     * 同步下载位图（调用方应放 IO 线程）；编辑器取真实宽高比用
+     */
+    fun loadBitmap(urlString: String): Bitmap? = downloadBitmap(urlString)
+
+    /**
      * 下载位图
      */
     private fun downloadBitmap(urlString: String): Bitmap? {
