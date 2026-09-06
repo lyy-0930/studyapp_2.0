@@ -147,11 +147,6 @@
             android:label="用户管理"
             android:theme="@style/Theme.StudyApp" />
         <activity
-            android:name=".StudentNotesBrowseActivity"
-            android:exported="true"
-            android:label="学生笔记"
-            android:theme="@style/Theme.StudyApp" />
-        <activity
             android:name=".ArticleListActivity"
             android:exported="true"
             android:label="志愿推文"

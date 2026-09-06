@@ -139,6 +139,12 @@ class AdminActivity : AppCompatActivity() {
     private var monitorVideoProgressBar: ProgressBar? = null
     private var monitorPanelView: View? = null
 
+    // ==================== 内嵌面板 9(学生笔记)/10(志愿推文管理) ====================
+    private lateinit var panelStudentNotes: FrameLayout
+    private lateinit var panelArticleManage: FrameLayout
+    private var notesFragment: StudentNotesFragment? = null
+    private var articleFragment: ArticleManageFragment? = null
+
     // ==================== 数据 ====================
     private lateinit var username: String
     private lateinit var role: String
@@ -183,7 +189,9 @@ class AdminActivity : AppCompatActivity() {
             if (currentPanel == 0) loadDashboardStats()
             return
         }
-        if (currentPanel != 0) {
+        if (currentPanel == 9 || currentPanel == 10) {
+            // 内嵌面板(学生笔记/志愿推文管理)：Fragment 自管刷新，返回后不跳回仪表盘
+        } else if (currentPanel != 0) {
             showPanel(0)
             setActiveNavItem(navDashboard)
         } else {
@@ -340,6 +348,10 @@ class AdminActivity : AppCompatActivity() {
 
         // 面板7：监控面板
         panelMonitor = findViewById(R.id.panelMonitor)
+
+        // 内嵌面板 9/10
+        panelStudentNotes = findViewById(R.id.panelStudentNotes)
+        panelArticleManage = findViewById(R.id.panelArticleManage)
     }
 
     private fun setupAvatar() {
@@ -382,6 +394,18 @@ class AdminActivity : AppCompatActivity() {
         panelDataReset.visibility = if (panelIndex == 6) View.VISIBLE else View.GONE
         panelMonitor.visibility = if (panelIndex == 7) View.VISIBLE else View.GONE
         panelBannerManage.visibility = if (panelIndex == 8) View.VISIBLE else View.GONE
+        panelStudentNotes.visibility = if (panelIndex == 9) View.VISIBLE else View.GONE
+        panelArticleManage.visibility = if (panelIndex == 10) View.VISIBLE else View.GONE
+
+        // 离开内嵌面板(9/10)时移除其 Fragment，避免残留为 RESUMED 反复隐式刷新
+        if (panelIndex != 9 && panelIndex != 10) {
+            supportFragmentManager.beginTransaction().apply {
+                if (notesFragment?.isAdded == true) remove(notesFragment!!)
+                if (articleFragment?.isAdded == true) remove(articleFragment!!)
+            }.commitAllowingStateLoss()
+            notesFragment = null
+            articleFragment = null
+        }
 
         when (panelIndex) {
             0 -> loadDashboardStats()
@@ -395,6 +419,20 @@ class AdminActivity : AppCompatActivity() {
                 monitorMediaPlayer?.start()
             }
             8 -> loadBannerList()
+            9 -> {
+                // 学生笔记（内嵌）
+                notesFragment = StudentNotesFragment()
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.panelStudentNotes, notesFragment!!)
+                    .commitAllowingStateLoss()
+            }
+            10 -> {
+                // 志愿推文管理（内嵌）
+                articleFragment = ArticleManageFragment.newInstance(true)
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.panelArticleManage, articleFragment!!)
+                    .commitAllowingStateLoss()
+            }
         }
     }
 
@@ -414,13 +452,13 @@ class AdminActivity : AppCompatActivity() {
             setActiveNavItem(navMonitor)
         }
         navStudentNotes.setOnClickListener {
+            showPanel(9)
             setActiveNavItem(navStudentNotes)
-            startActivity(Intent(this, StudentNotesBrowseActivity::class.java))
         }
         navBannerManage.setOnClickListener { showPanel(8); setActiveNavItem(navBannerManage) }
         navArticles.setOnClickListener {
+            showPanel(10)
             setActiveNavItem(navArticles)
-            com.studyapp.view.ArticleUi.openList(this, manage = true)
         }
         navDataReset.setOnClickListener { showPanel(6); setActiveNavItem(navDataReset) }
         navLogout.setOnClickListener { showLogoutConfirmationDialog() }

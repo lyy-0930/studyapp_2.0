@@ -2078,6 +2078,20 @@
                 android:layout_height="match_parent"
                 android:visibility="gone" />
 
+            <!-- ===== 面板9：学生笔记（内嵌） ===== -->
+            <FrameLayout
+                android:id="@+id/panelStudentNotes"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+
+            <!-- ===== 面板10：志愿推文管理（内嵌） ===== -->
+            <FrameLayout
+                android:id="@+id/panelArticleManage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+
         </FrameLayout>
 
     </LinearLayout>

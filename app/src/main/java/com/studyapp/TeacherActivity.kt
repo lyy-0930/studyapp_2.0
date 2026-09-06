@@ -58,6 +58,8 @@ class TeacherActivity : AppCompatActivity() {
     private lateinit var statsFragmentContainer: FrameLayout
     private lateinit var questionManageContainer: FrameLayout
     private lateinit var collectionFragmentContainer: FrameLayout
+    private lateinit var notesFragmentContainer: FrameLayout
+    private lateinit var articleFragmentContainer: FrameLayout
 
     // ==================== 首页 ====================
     private lateinit var homeBanner: com.studyapp.view.BannerCarousel
@@ -87,6 +89,10 @@ class TeacherActivity : AppCompatActivity() {
     private lateinit var navArticles: LinearLayout
     private lateinit var chatFragmentContainer: FrameLayout
     private var chatFragment: Fragment? = null
+    private var notesFragment: StudentNotesFragment? = null
+    private var articleFragment: ArticleManageFragment? = null
+    /** 志愿推文面板模式：true=侧栏「志愿推文管理」，false=首页「查看全部」 */
+    private var pendingArticleManage = true
     private var userId: Int = 0
     private lateinit var apiService: ApiService
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
@@ -154,7 +160,12 @@ class TeacherActivity : AppCompatActivity() {
                 this,
                 canPublish = true, // 教师可发布
                 onPublish = { com.studyapp.view.ArticleUi.openEdit(this, 0) },
-                onViewAll = { com.studyapp.view.ArticleUi.openList(this, manage = false) }
+                onViewAll = {
+                    // 首页「查看全部」也切到壳内列表（非管理模式），左侧栏保留
+                    pendingArticleManage = false
+                    showPanel(8)
+                    setActiveNavItem(navArticles)
+                }
             )
         )
         list.forEach { article ->
@@ -203,6 +214,8 @@ class TeacherActivity : AppCompatActivity() {
         chatFragmentContainer = findViewById(R.id.chatFragmentContainer)
         questionManageContainer = findViewById(R.id.questionManageContainer)
         collectionFragmentContainer = findViewById(R.id.collectionFragmentContainer)
+        notesFragmentContainer = findViewById(R.id.notesFragmentContainer)
+        articleFragmentContainer = findViewById(R.id.articleFragmentContainer)
 
         // 首页
         homeBanner = findViewById(R.id.homeBanner)
@@ -320,7 +333,7 @@ class TeacherActivity : AppCompatActivity() {
     // ==================== 面板切换 ====================
 
     fun showPanel(panelIndex: Int) {
-        // 0=首页, 1=课程上传, 2=数据统计, 3=消息, 4=我的课程, 5=题目管理, 6=合集管理
+        // 0=首页, 1=课程上传, 2=数据统计, 3=消息, 4=我的课程, 5=题目管理, 6=合集管理, 7=学生笔记, 8=志愿推文
         homePanelActive = panelIndex == 0
         homeContent.visibility = if (panelIndex == 0) View.VISIBLE else View.GONE
         uploadFragmentContainer.visibility = if (panelIndex == 1) View.VISIBLE else View.GONE
@@ -329,8 +342,20 @@ class TeacherActivity : AppCompatActivity() {
         chatFragmentContainer.visibility = if (panelIndex == 3) View.VISIBLE else View.GONE
         questionManageContainer.visibility = if (panelIndex == 5) View.VISIBLE else View.GONE
         collectionFragmentContainer.visibility = if (panelIndex == 6) View.VISIBLE else View.GONE
+        notesFragmentContainer.visibility = if (panelIndex == 7) View.VISIBLE else View.GONE
+        articleFragmentContainer.visibility = if (panelIndex == 8) View.VISIBLE else View.GONE
 
         val ft = supportFragmentManager.beginTransaction()
+
+        // 切换到非 7/8 面板时移除内嵌 Fragment，避免其残留为 RESUMED 反复隐式刷新
+        if (panelIndex != 7 && notesFragment?.isAdded == true) {
+            ft.remove(notesFragment!!)
+            notesFragment = null
+        }
+        if (panelIndex != 8 && articleFragment?.isAdded == true) {
+            ft.remove(articleFragment!!)
+            articleFragment = null
+        }
 
         when (panelIndex) {
             4 -> {
@@ -471,6 +496,16 @@ class TeacherActivity : AppCompatActivity() {
                     chatFragment = null
                 }
             }
+            7 -> {
+                // 学生笔记（内嵌）
+                notesFragment = StudentNotesFragment()
+                ft.replace(R.id.notesFragmentContainer, notesFragment!!)
+            }
+            8 -> {
+                // 志愿推文 列表/管理（内嵌；模式来自 pendingArticleManage）
+                articleFragment = ArticleManageFragment.newInstance(pendingArticleManage)
+                ft.replace(R.id.articleFragmentContainer, articleFragment!!)
+            }
         }
         ft.commitAllowingStateLoss()
     }
@@ -549,13 +584,14 @@ class TeacherActivity : AppCompatActivity() {
         }
 
         navStudentNotes.setOnClickListener {
+            showPanel(7)
             setActiveNavItem(navStudentNotes)
-            startActivity(Intent(this, StudentNotesBrowseActivity::class.java))
         }
 
         navArticles.setOnClickListener {
+            pendingArticleManage = true
+            showPanel(8)
             setActiveNavItem(navArticles)
-            com.studyapp.view.ArticleUi.openList(this, manage = true)
         }
 
         navLogout.setOnClickListener {
