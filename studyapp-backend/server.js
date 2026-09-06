@@ -279,6 +279,18 @@ app.get('/', (req, res) => {
 // 路径：POST /register
 // 功能：插入用户数据，检查用户名是否已存在
 // 请求体：{ username: "用户名", password: "密码", role: "角色（可选，默认student）", fullName, birthday, securityQuestion, securityAnswer }
+// 密码强度策略（高复杂度）：12~18 位，须含小写字母、大写字母与符号
+const PASSWORD_SYMBOLS = "!@#$%^&*()_+-=[]{}|;:',.<>/?`~";
+function passwordComplexityError(pw) {
+    if (typeof pw !== 'string' || pw.length < 12 || pw.length > 18) {
+        return '密码需为12~18位';
+    }
+    if (!/[a-z]/.test(pw)) return '密码需包含小写字母';
+    if (!/[A-Z]/.test(pw)) return '密码需包含大写字母';
+    if (![...PASSWORD_SYMBOLS].some((ch) => pw.includes(ch))) return '密码需包含符号（如 @ # ! 等）';
+    return null;
+}
+
 // 安全：密码和密保答案均使用 bcrypt 哈希后存储，不保存明文
 app.post('/register', async (req, res) => {
     try {
@@ -293,8 +305,9 @@ app.post('/register', async (req, res) => {
             return errorResponse(res, '用户名长度需在3-50个字符之间');
         }
 
-        if (password.length < 6) {
-            return errorResponse(res, '密码长度至少6位');
+        const pwError = passwordComplexityError(password);
+        if (pwError) {
+            return errorResponse(res, pwError);
         }
 
         // 检查用户名是否已存在
@@ -527,8 +540,9 @@ app.post('/forgot-password/reset', async (req, res) => {
             return errorResponse(res, '请填写所有必填字段');
         }
 
-        if (newPassword.length < 6) {
-            return errorResponse(res, '新密码长度至少6位');
+        const pwError = passwordComplexityError(newPassword);
+        if (pwError) {
+            return errorResponse(res, pwError);
         }
 
         const users = await db.executeQuery(
@@ -3896,12 +3910,14 @@ app.post('/admin/users/:id/reset-password', async (req, res) => {
 
         const username = userCheck[0].username;
 
-        // 生成随机临时密码（12位，含大小写字母+数字）
+        // 生成随机临时密码（12位大小写+数字，再补1位符号，满足高复杂度要求）
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        const symbols = '!@#$%';
         let tempPassword = '';
         for (let i = 0; i < 12; i++) {
             tempPassword += chars.charAt(Math.floor(Math.random() * chars.length));
         }
+        tempPassword += symbols.charAt(Math.floor(Math.random() * symbols.length));
 
         // bcrypt 哈希临时密码
         const hashedPassword = await bcrypt.hash(tempPassword, SALT_ROUNDS);

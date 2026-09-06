@@ -259,8 +259,9 @@ class RegisterActivity : AppCompatActivity() {
             return false
         }
 
-        if (password.length < 6) {
-            passwordEditText.error = "密码至少需要6位"
+        val pwError = com.studyapp.util.PasswordPolicy.check(password)
+        if (pwError != null) {
+            passwordEditText.error = pwError
             passwordEditText.requestFocus()
             return false
         }

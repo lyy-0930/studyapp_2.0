@@ -477,8 +477,9 @@ class LoginActivity : AppCompatActivity() {
                 Toast.makeText(this, "请输入新密码", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            if (newPw.length < 6) {
-                Toast.makeText(this, "密码至少需要6位", Toast.LENGTH_SHORT).show()
+            val pwError = com.studyapp.util.PasswordPolicy.check(newPw)
+            if (pwError != null) {
+                Toast.makeText(this, pwError, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             if (newPw != confirmPw) {
